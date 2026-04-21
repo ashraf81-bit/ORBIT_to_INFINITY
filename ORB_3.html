@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Satellites | Orbital Technologies</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --blue-deep: #0a0a1f;
+      --blue-glow: #60a5fa;
+      --blue-light: #bae6fd;
+      --text-body: #cbd5e1;
+      --accent-indigo: #a5b4fc;
+      --teal-glow: #2dd4bf;
+      --purple-glow: #c084fc;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--blue-deep);
+      color: var(--text-body);
+      font-family: 'Rajdhani', system-ui, sans-serif;
+      line-height: 1.75;
+      overflow-x: hidden;
+    }
+
+    .space-bg {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(ellipse at center, #12123a 0%, #060612 60%, #000 100%);
+      z-index: -3;
+    }
+    .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; }
+
+    .earth-bg {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-image: url('earth.png');
+      background-size: cover; background-position: center;
+      filter: brightness(0.55) contrast(1.2) blur(2px);
+      z-index: -1; opacity: 0.75;
+      transition: transform 0.1s ease-out;
+    }
+
+    #orbitCanvas {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+      opacity: 0.35;
+    }
+
+    .progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: linear-gradient(to right, #60a5fa, #2dd4bf, #60a5fa);
+      background-size: 200% 100%;
+      animation: shimmer 2s linear infinite;
+      z-index: 300; transition: width 0.1s ease;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0;}100%{background-position:-200% 0;} }
+
+    .back-btn {
+      position: fixed; top: 28px; left: 28px; z-index: 200;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+      border: 1px solid rgba(96,165,250,0.4); color: #bae6fd;
+      padding: 10px 20px; border-radius: 9999px;
+      font-family: 'Orbitron', sans-serif; font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 8px;
+      transition: all 0.3s ease;
+    }
+    .back-btn:hover {
+      background: rgba(30,64,175,0.5); border-color: rgba(96,165,250,0.9);
+      box-shadow: 0 0 20px rgba(96,165,250,0.3); transform: translateX(-4px);
+    }
+
+    .section-indicator {
+      position: fixed; right: 28px; top: 50%; transform: translateY(-50%);
+      z-index: 100; display: flex; flex-direction: column; gap: 10px;
+    }
+    .sec-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(96,165,250,0.3); border: 1.5px solid rgba(96,165,250,0.6);
+      transition: all 0.3s ease; cursor: pointer;
+    }
+    .sec-dot.active {
+      background: #60a5fa; box-shadow: 0 0 12px rgba(96,165,250,0.8);
+      transform: scale(1.5);
+    }
+
+    section {
+      position: relative; min-height: 100vh;
+      padding: 130px 8% 110px;
+      z-index: 10; display: flex; align-items: center;
+    }
+
+    section:nth-child(even) { justify-content: flex-end; }
+    section:nth-child(odd)  { justify-content: flex-start; }
+
+    .content {
+      max-width: 720px;
+      background: rgba(10,15,35,0.84); backdrop-filter: blur(20px);
+      border: 1px solid rgba(96,165,250,0.3); border-radius: 20px;
+      padding: 52px 58px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05);
+      opacity: 0; transform: translateY(30px);
+      transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.25,1,0.5,1);
+      position: relative; overflow: hidden;
+    }
+    .content::before {
+      content: ''; position: absolute; top: 0; right: 0;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, rgba(96,165,250,0.08) 0%, transparent 70%);
+      border-radius: 0 20px 0 120px;
+    }
+    .content.in-view { opacity: 1; transform: translateY(0); }
+
+    /* Updated satellite image dimensions: 520px × 437px */
+    .sat-image {
+      position: absolute;
+      width: 520px; height: 437px;
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid rgba(96,165,250,0.25);
+      box-shadow: 0 20px 60px rgba(0,0,30,0.8);
+      opacity: 0; transform: translateX(40px);
+      transition: opacity 0.9s ease 0.3s, transform 0.9s cubic-bezier(0.25,1,0.5,1) 0.3s;
+    }
+    .sat-image.in-view { opacity: 1; transform: translateX(0); }
+    .sat-image img { width: 100%; height: 100%; object-fit: cover; }
+    .sat-image-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(10,15,35,0.3) 0%, transparent 60%);
+    }
+
+    #sec-1 .sat-image { right: -60px; top: 50%; transform: translateY(-50%) translateX(40px); }
+    #sec-1 .sat-image.in-view { transform: translateY(-50%) translateX(0); }
+    #sec-2 .sat-image { left: -60px; top: 50%; transform: translateY(-50%) translateX(-40px); }
+    #sec-2 .sat-image.in-view { transform: translateY(-50%) translateX(0); }
+    #sec-3 .sat-image { right: -60px; top: 50%; transform: translateY(-50%) translateX(40px); }
+    #sec-3 .sat-image.in-view { transform: translateY(-50%) translateX(0); }
+    #sec-4 .sat-image { left: -60px; top: 50%; transform: translateY(-50%) translateX(-40px); }
+    #sec-4 .sat-image.in-view { transform: translateY(-50%) translateX(0); }
+    #sec-5 .sat-image { right: -60px; top: 50%; transform: translateY(-50%) translateX(40px); }
+    #sec-5 .sat-image.in-view { transform: translateY(-50%) translateX(0); }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif; font-size: 3rem; font-weight: 900;
+      line-height: 1.15; margin-bottom: 28px;
+      background: linear-gradient(135deg, #e0f2fe 0%, #7dd3fc 45%, #2dd4bf 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    h2 {
+      font-family: 'Orbitron', sans-serif; font-size: 1.8rem; font-weight: 700;
+      line-height: 1.25; margin-bottom: 10px;
+      background: linear-gradient(135deg, #bae6fd 0%, #93c5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .section-type {
+      font-family: 'Orbitron', sans-serif; font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.25em; text-transform: uppercase;
+      color: var(--teal-glow); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-type::before {
+      content: ''; display: inline-block; width: 30px; height: 1px;
+      background: var(--teal-glow);
+    }
+
+    .quote {
+      font-size: 1.2rem; font-style: italic; color: var(--accent-indigo);
+      margin: 36px 0; border-left: 4px solid var(--blue-glow);
+      padding-left: 24px; line-height: 1.75;
+      position: relative;
+    }
+    .quote::before {
+      content: '"'; position: absolute; left: -4px; top: -10px;
+      font-size: 3rem; color: rgba(96,165,250,0.25); font-style: normal;
+    }
+
+    p { font-size: 1.08rem; margin-bottom: 20px; color: var(--text-body); font-weight: 400; }
+
+    .highlight-box {
+      background: rgba(30,64,175,0.22); border: 1px solid rgba(96,165,250,0.45);
+      padding: 24px 30px; border-radius: 14px; margin: 32px 0;
+      font-size: 1.05rem; line-height: 1.8;
+      position: relative; overflow: hidden;
+    }
+    .highlight-box::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 4px; height: 100%;
+      background: linear-gradient(to bottom, #60a5fa, #2dd4bf);
+    }
+
+    .examples {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px;
+    }
+    .ex-tag {
+      padding: 6px 16px; border-radius: 9999px; font-size: 0.78rem;
+      font-family: 'Orbitron', sans-serif; font-weight: 700; letter-spacing: 0.08em;
+      border: 1px solid rgba(96,165,250,0.4); color: #bae6fd;
+      background: rgba(96,165,250,0.08);
+    }
+
+    .sat-widget {
+      position: fixed; right: 5%; bottom: 8%;
+      width: 340px; z-index: 5;
+      filter: drop-shadow(0 40px 80px rgba(0,0,30,0.9));
+      animation: satFloat 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes satFloat {
+      0%,100% { transform: translateY(0) rotate(3deg); }
+      50%      { transform: translateY(-22px) rotate(-2deg); }
+    }
+
+    .next-btn {
+      position: fixed; bottom: 44px; right: 52px;
+      padding: 16px 42px;
+      background: rgba(10,15,40,0.85); backdrop-filter: blur(12px);
+      border: 2px solid rgba(96,165,250,0.7); color: #e0f2fe;
+      border-radius: 9999px;
+      font-family: 'Orbitron', sans-serif; font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer; z-index: 100;
+      display: flex; align-items: center; gap: 12px;
+      transition: all 0.4s ease;
+      box-shadow: 0 0 20px rgba(96,165,250,0.2);
+    }
+    .next-btn:hover {
+      background: rgba(30,64,175,0.7); border-color: #93c5fd;
+      box-shadow: 0 0 40px rgba(96,165,250,0.5), 0 0 80px rgba(96,165,250,0.15);
+      transform: translateY(-4px);
+    }
+    .next-btn .arrow { font-size: 1.2rem; transition: transform 0.3s ease; }
+    .next-btn:hover .arrow { transform: translateX(5px); }
+
+    .glitch-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 9999; pointer-events: none; opacity: 0; background: #000;
+    }
+    .glitch-overlay.active { animation: glitchSequence 2s ease-in-out forwards; }
+    @keyframes glitchSequence {
+      0%   { opacity: 0; }
+      8%   { opacity: 1; background: #0a0a1a; }
+      10%  { opacity: 0.3; background: #fff; transform: translateX(-8px); }
+      11%  { opacity: 1; background: #0a0a1a; transform: translateX(5px); }
+      13%  { opacity: 0; transform: translateX(0); }
+      27%  { opacity: 0; }
+      29%  { opacity: 0.9; background: #050518; }
+      31%  { opacity: 0.15; background: #6070ff; transform: translateX(-12px) skewX(-4deg); }
+      33%  { opacity: 1; background: #000; transform: translateX(9px) skewX(3deg); }
+      35%  { opacity: 0; transform: translateX(0) skewX(0); }
+      65%  { opacity: 0; }
+      68%  { opacity: 1; background: #000; }
+      70%  { opacity: 0.4; background: #fff; transform: scaleX(1.04); }
+      72%  { opacity: 1; background: #000; transform: scaleX(1); }
+      75%  { opacity: 0.08; background: #4060ff; }
+      77%  { opacity: 1; background: #000; }
+      100% { opacity: 1; background: #000; }
+    }
+    .glitch-overlay::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px);
+    }
+
+    @keyframes pageEntrance {
+      0%   { opacity: 0; transform: translateY(20px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    body { animation: pageEntrance 0.8s ease-out forwards; }
+
+    @media (max-width: 900px) {
+      .sat-image { display: none; }
+      .sat-widget { width: 180px; right: 2%; bottom: 18%; }
+      h1 { font-size: 2rem; }
+      h2 { font-size: 1.4rem; }
+      section { padding: 100px 5% 80px; justify-content: center !important; }
+      .content { padding: 32px 24px; }
+      .next-btn { padding: 12px 28px; font-size: 0.7rem; right: 20px; bottom: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+<div class="space-bg"></div>
+<div class="stars" id="stars"></div>
+<div class="earth-bg" id="earthBg"></div>
+<canvas id="orbitCanvas"></canvas>
+<div class="glitch-overlay" id="glitchOverlay"></div>
+
+<svg class="sat-widget" id="satWidget" viewBox="0 0 340 220" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="80" width="90" height="60" rx="4" fill="none" stroke="rgba(96,165,250,0.6)" stroke-width="1.5"/>
+  <line x1="55" y1="80" x2="55" y2="140" stroke="rgba(96,165,250,0.4)" stroke-width="1"/>
+  <line x1="10" y1="110" x2="100" y2="110" stroke="rgba(96,165,250,0.4)" stroke-width="1"/>
+  <rect x="12" y="82" width="40" height="26" fill="rgba(30,60,120,0.5)"/>
+  <rect x="57" y="82" width="40" height="26" fill="rgba(30,60,120,0.5)"/>
+  <rect x="12" y="113" width="40" height="24" fill="rgba(30,60,120,0.5)"/>
+  <rect x="57" y="113" width="40" height="24" fill="rgba(30,60,120,0.5)"/>
+  <line x1="100" y1="110" x2="130" y2="110" stroke="rgba(96,165,250,0.7)" stroke-width="2"/>
+  <rect x="130" y="75" width="80" height="70" rx="8" fill="rgba(15,25,60,0.9)" stroke="rgba(96,165,250,0.7)" stroke-width="1.5"/>
+  <rect x="138" y="83" width="64" height="20" rx="3" fill="rgba(30,60,130,0.6)" stroke="rgba(96,165,250,0.3)" stroke-width="1"/>
+  <circle cx="170" cy="120" r="14" fill="none" stroke="rgba(45,212,191,0.6)" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <circle cx="170" cy="120" r="7" fill="rgba(45,212,191,0.15)" stroke="rgba(45,212,191,0.8)" stroke-width="1.5"/>
+  <line x1="210" y1="110" x2="240" y2="110" stroke="rgba(96,165,250,0.7)" stroke-width="2"/>
+  <rect x="240" y="80" width="90" height="60" rx="4" fill="none" stroke="rgba(96,165,250,0.6)" stroke-width="1.5"/>
+  <line x1="285" y1="80" x2="285" y2="140" stroke="rgba(96,165,250,0.4)" stroke-width="1"/>
+  <line x1="240" y1="110" x2="330" y2="110" stroke="rgba(96,165,250,0.4)" stroke-width="1"/>
+  <rect x="242" y="82" width="40" height="26" fill="rgba(30,60,120,0.5)"/>
+  <rect x="287" y="82" width="40" height="26" fill="rgba(30,60,120,0.5)"/>
+  <rect x="242" y="113" width="40" height="24" fill="rgba(30,60,120,0.5)"/>
+  <rect x="287" y="113" width="40" height="24" fill="rgba(30,60,120,0.5)"/>
+  <line x1="170" y1="75" x2="170" y2="45" stroke="rgba(96,165,250,0.7)" stroke-width="1.5"/>
+  <circle cx="170" cy="42" r="5" fill="none" stroke="rgba(45,212,191,0.8)" stroke-width="1.5"/>
+  <path d="M170 150 Q150 185 120 200" stroke="rgba(45,212,191,0.25)" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+  <path d="M170 150 Q185 185 210 200" stroke="rgba(45,212,191,0.25)" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+  <path d="M170 150 Q170 185 170 205" stroke="rgba(45,212,191,0.3)" stroke-width="1.5" fill="none" stroke-dasharray="4,3"/>
+</svg>
+
+<a href="index.html" class="back-btn">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  BACK
+</a>
+
+<div class="section-indicator" id="sectionIndicator"></div>
+
+<section id="sec-0">
+  <div class="content">
+    <div class="section-type">Orbital Systems</div>
+    <h1>Satellites</h1>
+    <div class="quote">
+      Above us, silent machines map, guide, and connect the world.
+    </div>
+    <p>Satellites are not just objects in orbit — they are the backbone of modern civilization, enabling communication, navigation, weather prediction, and scientific discovery.</p>
+    <p>Thousands of them circle our planet right now, each locked in precise trajectories, each performing a silent role that the world below has come to depend upon completely.</p>
+    <div class="highlight-box">
+      From geostationary giants that hold a fixed gaze over entire continents, to low-orbit constellations weaving a blanket of connectivity — satellites have redefined what it means to know, communicate, and navigate.
+    </div>
+  </div>
+</section>
+
+<section id="sec-1">
+  <div class="content">
+    <div class="section-type">Type 01 — Communication</div>
+    <h2>Global Voices in Orbit</h2>
+    <p>These satellites relay signals across continents, enabling television broadcasts, internet connectivity, and international communication. Positioned mostly in geostationary orbit, they remain fixed relative to Earth, acting as constant communication hubs.</p>
+    <p>A single geostationary satellite can cover one-third of Earth's surface. Together, networks like Starlink weave low-orbit constellations that deliver broadband to the most remote corners of the planet.</p>
+    <div class="highlight-box">
+      Without communication satellites, GPS would be silent, mobile roaming would vanish, and live global news coverage would be impossible.
+    </div>
+    <div class="examples">
+      <span class="ex-tag">Intelsat</span>
+      <span class="ex-tag">Starlink</span>
+      <span class="ex-tag">SES Astra</span>
+      <span class="ex-tag">Viasat</span>
+    </div>
+  </div>
+  <div class="sat-image" id="img-1">
+    <img src="sat_comms.png" alt="Communication Satellite">
+    <div class="sat-image-overlay"></div>
+  </div>
+</section>
+
+<section id="sec-2">
+  <div class="sat-image" id="img-2">
+    <img src="sat_nav.png" alt="Navigation Satellite">
+    <div class="sat-image-overlay"></div>
+  </div>
+  <div class="content">
+    <div class="section-type">Type 02 — Navigation</div>
+    <h2>Precision Beyond Sight</h2>
+    <p>Navigation satellites form global positioning systems that allow devices to determine location with incredible accuracy. By transmitting synchronized signals from multiple satellites, they enable real-time positioning anywhere on Earth.</p>
+    <p>The principle is elegant: four satellites, each broadcasting its position and a precise timestamp, allow a receiver to triangulate its exact coordinates anywhere on the globe — within meters.</p>
+    <div class="highlight-box">
+      Modern GPS has become so embedded in civilian life that aviation, shipping, logistics, and emergency response now depend on it entirely. Remove it, and global infrastructure halts.
+    </div>
+    <div class="examples">
+      <span class="ex-tag">GPS (USA)</span>
+      <span class="ex-tag">GLONASS (Russia)</span>
+      <span class="ex-tag">Galileo (EU)</span>
+      <span class="ex-tag">BeiDou (China)</span>
+    </div>
+  </div>
+</section>
+
+<section id="sec-3">
+  <div class="content">
+    <div class="section-type">Type 03 — Weather</div>
+    <h2>Eyes on the Atmosphere</h2>
+    <p>Weather satellites monitor cloud formations, storms, and climate patterns. They provide critical data for forecasting, disaster warning, and environmental monitoring, helping humanity prepare for nature's extremes.</p>
+    <p>Infrared and visible imaging sensors capture the planet's atmospheric dynamics in real time — from the spiral arms of a hurricane to the invisible movement of jet streams thousands of kilometers wide.</p>
+    <div class="highlight-box">
+      A single GOES satellite continuously monitors an entire hemisphere, transmitting live imagery every 10 minutes — the clearest window humanity has ever had into the planet's weather engine.
+    </div>
+    <div class="examples">
+      <span class="ex-tag">GOES-16</span>
+      <span class="ex-tag">Meteosat</span>
+      <span class="ex-tag">Himawari</span>
+      <span class="ex-tag">NOAA-20</span>
+    </div>
+  </div>
+  <div class="sat-image" id="img-3">
+    <img src="sat_weather.png" alt="Weather Satellite">
+    <div class="sat-image-overlay"></div>
+  </div>
+</section>
+
+<section id="sec-4">
+  <div class="sat-image" id="img-4">
+    <img src="sat_science.png" alt="Scientific Satellite">
+    <div class="sat-image-overlay"></div>
+  </div>
+  <div class="content">
+    <div class="section-type">Type 04 — Scientific</div>
+    <h2>Exploring the Unknown</h2>
+    <p>Designed for research, these satellites observe space, study Earth, and gather data beyond human reach. From cosmic radiation to deep space imaging, they expand our understanding of the universe.</p>
+    <p>Above the distortion of Earth's atmosphere, space telescopes capture light that has traveled billions of years — revealing the earliest galaxies, newborn stars, and the true scale of the cosmos.</p>
+    <div class="highlight-box">
+      The James Webb Space Telescope peers back over 13.6 billion years to observe the universe's first light. It is humanity's deepest eye — orbiting 1.5 million kilometers from Earth.
+    </div>
+    <div class="examples">
+      <span class="ex-tag">Hubble</span>
+      <span class="ex-tag">James Webb</span>
+      <span class="ex-tag">Chandra X-Ray</span>
+      <span class="ex-tag">Terra</span>
+    </div>
+  </div>
+</section>
+
+<section id="sec-5">
+  <div class="content">
+    <div class="section-type">Type 05 — Surveillance</div>
+    <h2>Invisible Guardians</h2>
+    <p>Operating mostly in secrecy, these satellites are used for reconnaissance, intelligence gathering, and national security. They monitor activities on Earth with high-resolution imaging and advanced sensors.</p>
+    <p>From detecting missile launches to tracking troop movements in near real time, surveillance satellites have fundamentally changed the nature of geopolitical intelligence — making nothing on the surface truly invisible.</p>
+    <div class="highlight-box">
+      Resolution so fine that commercial equivalents can read a newspaper from orbit. Classification so deep that most nations deny specific capabilities exist.
+    </div>
+    <p style="font-style:italic;text-align:center;color:#94a3b8;margin-top:32px;font-size:1rem;">
+      "Watching everything. Seen by no one."
+    </p>
+    <div class="examples">
+      <span class="ex-tag">KH-series (USA)</span>
+      <span class="ex-tag">Lacrosse SAR</span>
+      <span class="ex-tag">Ofek (Israel)</span>
+    </div>
+  </div>
+  <div class="sat-image" id="img-5">
+    <img src="sat_military.png" alt="Surveillance Satellite">
+    <div class="sat-image-overlay"></div>
+  </div>
+</section>
+
+<button class="next-btn" id="nextBtn">
+  NEXT SECTION <span class="arrow">→</span>
+</button>
+
+<script>
+(function(){
+  const container = document.getElementById('stars');
+  for(let i = 0; i < 380; i++){
+    const star = document.createElement('div');
+    const sz = Math.random() * 2.5 + 0.4;
+    star.style.cssText = `position:absolute;background:#fff;border-radius:50%;
+      width:${sz}px;height:${sz}px;
+      left:${Math.random()*100}vw;top:${Math.random()*500}vh;
+      opacity:${Math.random()*0.6+0.2};
+      animation:twinkle ${Math.random()*6+4}s infinite alternate;`;
+    container.appendChild(star);
+  }
+  const s = document.createElement('style');
+  s.textContent = '@keyframes twinkle{0%{opacity:0.2;}100%{opacity:1;}}';
+  document.head.appendChild(s);
+})();
+
+(function(){
+  const canvas = document.getElementById('orbitCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, cx, cy;
+
+  const orbits = [
+    { rx: 0.28, ry: 0.14, speed: 0.00025, phase: 0, tilt: 0.3, color: 'rgba(96,165,250,0.5)' },
+    { rx: 0.38, ry: 0.18, speed: 0.00018, phase: 1.2, tilt: -0.2, color: 'rgba(45,212,191,0.4)' },
+    { rx: 0.50, ry: 0.22, speed: 0.00012, phase: 2.5, tilt: 0.5, color: 'rgba(165,180,252,0.35)' },
+    { rx: 0.62, ry: 0.27, speed: 0.00008, phase: 0.8, tilt: -0.4, color: 'rgba(96,165,250,0.3)' },
+  ];
+
+  function resize(){
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cx = W * 0.5; cy = H * 0.5;
+  }
+
+  function draw(t){
+    ctx.clearRect(0,0,W,H);
+    orbits.forEach(o => {
+      const rx = W * o.rx;
+      const ry = H * o.ry;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(o.tilt);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = o.color.replace('0.5','0.2').replace('0.4','0.15').replace('0.35','0.12').replace('0.3','0.1');
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 8]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const angle = t * o.speed + o.phase;
+      const sx = Math.cos(angle) * rx;
+      const sy = Math.sin(angle) * ry;
+      const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, 8);
+      grad.addColorStop(0, o.color);
+      grad.addColorStop(1, 'transparent');
+      ctx.beginPath();
+      ctx.arc(sx, sy, 8, 0, Math.PI*2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI*2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.restore();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  requestAnimationFrame(draw);
+})();
+
+function glitchRedirect(url){
+  const g = document.getElementById('glitchOverlay');
+  g.classList.add('active');
+  setTimeout(() => { window.location.href = url; }, 2100);
+}
+
+document.getElementById('nextBtn').addEventListener('click', () => glitchRedirect('ORB_6.html'));
+
+const earthBg = document.getElementById('earthBg');
+const satWidget = document.getElementById('satWidget');
+window.addEventListener('scroll', () => {
+  const sy = window.scrollY;
+  earthBg.style.transform = `translateY(${sy * 0.03}px)`;
+  satWidget.style.transform = `translateY(${sy * 0.06}px)`;
+}, { passive: true });
+
+const progress = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const pct = (window.scrollY / (document.documentElement.scrollHeight - document.documentElement.clientHeight)) * 100;
+  progress.style.width = `${pct}%`;
+}, { passive: true });
+
+const sections = [...document.querySelectorAll('section')];
+const indicator = document.getElementById('sectionIndicator');
+sections.forEach((_, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'sec-dot';
+  dot.addEventListener('click', () => sections[i].scrollIntoView({ behavior: 'smooth' }));
+  indicator.appendChild(dot);
+});
+
+function updateDots(){
+  const mid = window.scrollY + window.innerHeight / 2;
+  sections.forEach((sec, i) => {
+    const top = sec.getBoundingClientRect().top + window.scrollY;
+    indicator.children[i].classList.toggle('active', mid >= top && mid < top + sec.offsetHeight);
+  });
+}
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      e.target.classList.add('in-view');
+      const id = e.target.closest('section')?.id;
+      if(id){
+        const imgId = 'img-' + id.split('-')[1];
+        const img = document.getElementById(imgId);
+        if(img) img.classList.add('in-view');
+      }
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.content').forEach(el => observer.observe(el));
+
+window.addEventListener('scroll', updateDots, { passive: true });
+updateDots();
+</script>
+</body>
+</html>

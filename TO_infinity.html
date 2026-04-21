@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beyond Infinity | The Future</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --mono: 'Share Tech Mono', monospace; }
+
+    html, body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Rajdhani',sans-serif; }
+
+    #starsBg { position:fixed; inset:0; z-index:0; pointer-events:none; }
+    #transOverlay {
+      position:fixed; inset:0; z-index:50;
+      background:#000; opacity:0; pointer-events:none;
+      transition: opacity 0.38s ease;
+    }
+    #transOverlay.fade { opacity:1; }
+
+    .planet-section {
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; pointer-events:none;
+    }
+    .planet-section.active { opacity:1; pointer-events:all; }
+
+    .sec-bg {
+      position:absolute; inset:0;
+      background-size:cover; background-position:center;
+      filter:blur(28px) brightness(0.28) saturate(1.3);
+      transform:scale(1.1); z-index:0;
+    }
+    .sec-vignette {
+      position:absolute; inset:0; z-index:1;
+      background:radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.75) 100%);
+    }
+    .dark-tint {
+      position:absolute; inset:0; z-index:2;
+      background:rgba(0,0,0,0.35);
+    }
+
+    .hero-img-wrap {
+      position:absolute;
+      left:3%; top:50%; transform:translateY(-50%);
+      width:48vw; max-width:640px;
+      z-index:5;
+      filter:drop-shadow(0 0 50px var(--glow));
+      animation:floatFx 9s ease-in-out infinite;
+    }
+    .hero-img-wrap img { width:100%; height:auto; object-fit:contain; border-radius:12px; }
+
+    @keyframes floatFx {
+      0%,100%{transform:translateY(-50%) translateY(0px);}
+      50%{transform:translateY(-50%) translateY(-14px);}
+    }
+
+    .title-block {
+      position:absolute; left:3%; top:5%;
+      z-index:6; max-width:45vw;
+    }
+    .sec-category {
+      font-family:var(--mono); font-size:0.58rem;
+      letter-spacing:0.28em; text-transform:uppercase;
+      color:var(--glow); opacity:0.7; margin-bottom:8px;
+    }
+    .sec-title {
+      font-family:'Orbitron',sans-serif;
+      font-size:clamp(1.8rem,4vw,3.2rem); font-weight:900;
+      color:#fff; letter-spacing:0.05em; line-height:1.1;
+      text-shadow:0 0 40px var(--glow), 0 0 80px var(--glow);
+      margin-bottom:10px;
+    }
+    .sec-tagline {
+      font-family:'Rajdhani',sans-serif; font-size:0.95rem;
+      font-style:italic; color:rgba(255,255,255,0.5);
+      line-height:1.5; max-width:380px;
+    }
+
+    .ui-right {
+      position:absolute; right:3%; top:50%;
+      transform:translateY(-50%);
+      width:37vw; max-width:430px;
+      z-index:6; display:flex; flex-direction:column; gap:12px;
+    }
+
+    .panel {
+      background:rgba(0,0,0,0.78);
+      border:1px solid var(--glow);
+      border-radius:6px; padding:14px 16px;
+      box-shadow:0 0 24px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .panel-header {
+      font-family:var(--mono); font-size:0.58rem;
+      letter-spacing:0.22em; text-transform:uppercase;
+      color:var(--glow); margin-bottom:10px;
+      border-bottom:1px solid rgba(255,255,255,0.07);
+      padding-bottom:7px;
+    }
+
+    .tech-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+    .tech-item {
+      background:rgba(0,0,0,0.55);
+      border:1px solid rgba(255,255,255,0.07);
+      border-radius:4px; padding:8px 10px;
+    }
+    .tech-label {
+      font-family:var(--mono); font-size:0.5rem;
+      letter-spacing:0.1em; text-transform:uppercase;
+      color:rgba(255,255,255,0.3); display:block; margin-bottom:3px;
+    }
+    .tech-value {
+      font-family:var(--mono); font-size:0.8rem;
+      color:var(--glow); font-weight:bold;
+    }
+
+    .timeline-row {
+      display:flex; align-items:flex-start; gap:10px;
+      margin-bottom:7px;
+    }
+    .tl-dot {
+      width:6px; height:6px; border-radius:50%;
+      background:var(--glow); flex-shrink:0; margin-top:5px;
+      box-shadow:0 0 8px var(--glow);
+    }
+    .tl-text {
+      font-family:'Rajdhani',sans-serif; font-size:0.9rem;
+      color:rgba(255,255,255,0.65); line-height:1.4;
+    }
+    .tl-year {
+      font-family:var(--mono); font-size:0.75rem;
+      color:var(--glow); display:block; margin-bottom:2px;
+    }
+
+    .detail-row {
+      font-family:'Rajdhani',sans-serif; font-size:0.9rem;
+      color:var(--glow); line-height:1.6; margin-bottom:3px;
+    }
+    .detail-row span { color:rgba(255,255,255,0.58); }
+
+    .impact-box {
+      position:absolute; left:3%; bottom:5%;
+      width:44vw; max-width:540px;
+      background:rgba(0,0,0,0.72);
+      border:1px solid var(--glow);
+      border-radius:6px; padding:16px 20px;
+      z-index:6;
+    }
+    .impact-label {
+      font-family:var(--mono); font-size:0.52rem;
+      letter-spacing:0.2em; text-transform:uppercase;
+      color:var(--glow); margin-bottom:8px; opacity:0.65;
+    }
+    .impact-text {
+      font-family:'Rajdhani',sans-serif; font-size:1.05rem;
+      color:rgba(255,255,255,0.78); line-height:1.6; font-style:italic;
+    }
+
+    .nav-arrow {
+      position:fixed; z-index:100;
+      background:rgba(0,0,0,0.65); backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7);
+      border-radius:50%; width:48px; height:48px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:1.4rem; transition:all 0.3s ease;
+      user-select:none;
+    }
+    .nav-arrow:hover { background:rgba(255,255,255,0.1); color:#fff; }
+    #navPrev { left:50%; top:50%; transform:translate(-140px,-50%); }
+    #navNext { left:50%; top:50%; transform:translate(92px,-50%); }
+
+    .dots-nav {
+      position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+      z-index:100; display:flex; gap:8px; align-items:center;
+    }
+    .dot {
+      width:7px; height:7px; border-radius:50%;
+      background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3);
+      cursor:pointer; transition:all 0.3s ease;
+    }
+    .dot.active { background:#fff; transform:scale(1.5); box-shadow:0 0 8px rgba(255,255,255,0.8); }
+
+    .section-counter {
+      position:fixed; bottom:44px; right:28px; z-index:100;
+      font-family:var(--mono); font-size:0.63rem;
+      color:rgba(255,255,255,0.28); letter-spacing:0.14em;
+    }
+    .section-name-top {
+      position:fixed; top:20px; left:50%; transform:translateX(-50%);
+      z-index:100; font-family:var(--mono); font-size:0.56rem;
+      letter-spacing:0.28em; text-transform:uppercase;
+      color:rgba(255,255,255,0.28);
+    }
+
+    .back-btn {
+      position:fixed; top:14px; left:18px; z-index:200;
+      background:rgba(0,0,0,0.7); backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.18); color:rgba(255,255,255,0.65);
+      padding:8px 18px; border-radius:9999px;
+      font-family:'Orbitron',sans-serif; font-size:0.58rem; font-weight:700;
+      letter-spacing:0.14em; text-transform:uppercase;
+      cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:7px;
+      transition:all 0.3s ease;
+    }
+    .back-btn:hover { background:rgba(255,255,255,0.08); color:#fff; }
+
+    #finaleBtn {
+      position:fixed; bottom:44px; right:90px; z-index:100;
+      padding:13px 34px;
+      background:rgba(0,0,0,0.85); backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,0.35); color:rgba(255,255,255,0.85);
+      border-radius:2px;
+      font-family:'Orbitron',sans-serif; font-size:0.72rem; font-weight:700;
+      letter-spacing:0.18em; text-transform:uppercase;
+      cursor:pointer; transition:all 0.4s ease;
+      display:none; align-items:center; gap:10px;
+      box-shadow:0 0 20px rgba(255,255,255,0.06);
+    }
+    #finaleBtn.show { display:flex; }
+    #finaleBtn:hover {
+      background:rgba(255,255,255,0.07); border-color:#fff; color:#fff;
+      box-shadow:0 0 50px rgba(255,255,255,0.18); transform:translateY(-2px);
+    }
+
+    @media(max-width:768px){
+      .hero-img-wrap{width:90vw;left:50%;top:30%;transform:translate(-50%,-50%);}
+      .ui-right{width:90vw;right:5%;top:auto;bottom:1%;transform:none;}
+      .title-block{left:5%;top:2%;max-width:90vw;}
+      .impact-box{width:90vw;left:5%;}
+      .nav-arrow{display:none;}
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="starsBg"></canvas>
+<div id="transOverlay"></div>
+
+<a href="Deep_space.html" class="back-btn">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  BACK
+</a>
+
+<div class="section-name-top" id="topLabel">BEYOND INFINITY</div>
+<div class="section-counter" id="counter">01 / 09</div>
+<div class="nav-arrow" id="navPrev">‹</div>
+<div class="nav-arrow" id="navNext">›</div>
+<div class="dots-nav" id="dotsNav"></div>
+
+<button id="finaleBtn" onclick="window.location.href='end.html'">
+  CROSS THE THRESHOLD ◈
+</button>
+
+<div id="sectionsWrap"></div>
+
+<script>
+
+const SECS = [
+  {
+    id:'propulsion', name:'NEXT-GEN PROPULSION', cat:'Chapter 01 — Technology',
+    glow:'#f97316', image:'fut_propulsion.png',
+    tagline:'"Distance will no longer define exploration — speed will."',
+    tech:[{label:'Nuclear NTR',value:'10× Chemical'},{label:'Ion Engine',value:'Continuous Thrust'},{label:'Fusion Drive',value:'~0.1c Possible'},{label:'Solar Sail',value:'No Fuel Needed'}],
+    timeline:[{year:'2030s',text:'Nuclear Thermal Rocket first tests — Moon/Mars transit in weeks'},{year:'2040s',text:'Advanced ion propulsion for deep space cargo missions'},{year:'2060s',text:'Fusion prototype — interplanetary travel redefined'}],
+    details:[{key:'Speed Record',val:'Parker Solar Probe — 692,000 km/h (chemical)'},{key:'NTR Target',val:'200,000+ km/h sustained'},{key:'Fuel',val:'Hydrogen · Helium-3 · Photons'}],
+    impact:'"Distance will no longer define exploration — speed will. The solar system shrinks from years of travel to weeks."'
+  },
+  {
+    id:'colonies', name:'MOON & MARS COLONIES', cat:'Chapter 02 — Settlement',
+    glow:'#f59e0b', image:'fut_colony.png',
+    tagline:'"Humanity will no longer be a single-planet species."',
+    tech:[{label:'Lunar Base',value:'Artemis 2030s'},{label:'Mars Colony',value:'2040–2050s'},{label:'Habitat Type',value:'Pressurized Dome'},{label:'Self-Sustain',value:'In-situ Resources'}],
+    timeline:[{year:'2026',text:'Artemis crewed lunar landing — permanent base begins'},{year:'2035',text:'First permanent Lunar Gateway station operational'},{year:'2050',text:'First self-sustaining Mars colony — 1,000 residents'}],
+    details:[{key:'Water',val:'Lunar ice mining · Mars subsurface ice'},{key:'Power',val:'Nuclear reactors · solar arrays'},{key:'Construction',val:'3D printing from local regolith'}],
+    impact:'"Humanity will no longer be a single-planet species. Extinction becomes impossible the moment we become multiplanetary."'
+  },
+  {
+    id:'satellites', name:'MEGA SATELLITE NETWORKS', cat:'Chapter 03 — Connectivity',
+    glow:'#06b6d4', image:'fut_satellites.png',
+    tagline:'"Space will become the backbone of global civilization."',
+    tech:[{label:'Starlink',value:'6,000+ Active'},{label:'Latency',value:'<20ms Global'},{label:'Coverage',value:'100% Earth'},{label:'AI Control',value:'Autonomous Swarms'}],
+    timeline:[{year:'2025',text:'Global broadband — every corner of Earth connected'},{year:'2030',text:'Real-time centimeter-precision Earth monitoring'},{year:'2040',text:'AI-managed swarms — self-repairing orbital infrastructure'}],
+    details:[{key:'Constellations',val:'Starlink · OneWeb · Amazon Kuiper'},{key:'Total Planned',val:'40,000+ satellites this decade'},{key:'Applications',val:'Internet · Climate · Emergency · Navigation'}],
+    impact:'"Space will become the backbone of global civilization — the internet, power grid, and nervous system of a connected Earth."'
+  },
+  {
+    id:'ai', name:'AI + AUTONOMOUS EXPLORATION', cat:'Chapter 04 — Intelligence',
+    glow:'#a78bfa', image:'fut_ai.png',
+    tagline:'"The first explorers of deep space may not be human."',
+    tech:[{label:'AI Decision',value:'Real-time Onboard'},{label:'Signal Delay',value:'0 (vs 22h manual)'},{label:'Mission Types',value:'Self-Directed'},{label:'Swarm AI',value:'Multi-probe Coord.'}],
+    timeline:[{year:'2028',text:'First fully autonomous rover mission — no human commands'},{year:'2035',text:'AI probes self-navigate asteroid belt'},{year:'2050',text:'Self-replicating AI probe network reaches outer planets'}],
+    details:[{key:'Current',val:'Perseverance has limited autonomous driving'},{key:'Near Future',val:'Full mission AI — launches, lands, decides'},{key:'Challenge',val:'Ethics of autonomous life-detection decisions'}],
+    impact:'"The first explorers of deep space may not be human — they will be the minds we build and send ahead."'
+  },
+  {
+    id:'interstellar', name:'INTERSTELLAR MISSIONS', cat:'Chapter 05 — Stars',
+    glow:'#e0f2fe', image:'fut_interstellar.png',
+    tagline:'"For the first time, we are not just exploring a system — but the stars."',
+    tech:[{label:'Target',value:'Alpha Centauri 4.2 ly'},{label:'Light Sail',value:'20% Speed of Light'},{label:'Travel Time',value:'~20 years'},{label:'Probe Size',value:'Gram-scale chips'}],
+    timeline:[{year:'2030s',text:'Breakthrough Starshot — first light sail prototype tests'},{year:'2050',text:'Miniaturized probe launched toward Alpha Centauri'},{year:'2070',text:'First data from another star system received on Earth'}],
+    details:[{key:'Breakthrough Starshot',val:'$100M initiative — laser propulsion'},{key:'Voyager 1',val:'Current nearest star: 74,000 years away'},{key:'Physics Limit',val:'~0.2c with laser sail technology'}],
+    impact:'"For the first time in history, we are not just exploring a system — we are reaching for the stars themselves."'
+  },
+  {
+    id:'habitats', name:'SPACE HABITATS & CITIES', cat:'Chapter 06 — Civilization',
+    glow:'#34d399', image:'fut_habitat.png',
+    tagline:'"Space will not just be visited — it will be lived in."',
+    tech:[{label:"O'Neill Cylinder",value:'Rotating gravity'},{label:'Population',value:'10,000–1M residents'},{label:'Gravity',value:'Simulated via spin'},{label:'Economy',value:'Self-contained'}],
+    timeline:[{year:'2040s',text:'First commercial space hotel — 100 guests, rotating ring'},{year:'2060',text:'Permanent orbital city — 10,000 permanent residents'},{year:'2100',text:"O'Neill cylinders — millions living off-Earth"}],
+    details:[{key:'Concept Origin',val:"Gerard O'Neill — Princeton, 1976"},{key:'Location',val:'L4/L5 Lagrange points — stable orbits'},{key:'Size',val:'Up to 32 km long cylinders'}],
+    impact:'"Space will not just be visited — it will be lived in. Cities will orbit. Children will be born between the stars."'
+  },
+  {
+    id:'energy', name:'ENERGY FROM SPACE', cat:'Chapter 07 — Power',
+    glow:'#fbbf24', image:'fut_energy.png',
+    tagline:'"Energy scarcity may end… not on Earth, but above it."',
+    tech:[{label:'Collection',value:'Space Solar Array'},{label:'Transmission',value:'Microwave Beam'},{label:'Efficiency',value:'8× ground solar'},{label:'Coverage',value:'24/7 — no night'}],
+    timeline:[{year:'2030',text:'First space solar demonstrator satellite launched'},{year:'2040',text:'Commercial SBSP station — powers 1 million homes'},{year:'2060',text:'Global SBSP grid — fossil fuels become obsolete'}],
+    details:[{key:'Concept',val:'Space-Based Solar Power (SBSP)'},{key:'Advantage',val:'No atmosphere loss · no night · no weather'},{key:'ESA/NASA',val:'Active research programs underway'}],
+    impact:'"Energy scarcity may end — not through resources on Earth, but through the limitless power of the Sun, collected above the clouds."'
+  },
+  {
+    id:'evolution', name:'HUMAN EVOLUTION IN SPACE', cat:'Chapter 08 — Biology',
+    glow:'#f472b6', image:'fut_evolution.png',
+    tagline:'"We will not just go to space — we will change to survive it."',
+    tech:[{label:'Bone Loss',value:'1% / month (solved)'},{label:'Radiation',value:'Genetic shielding'},{label:'Augmentation',value:'Cybernetic organs'},{label:'Lifespan',value:'Extended via space Rx'}],
+    timeline:[{year:'2030s',text:'Genetic screening for space adaptation in astronauts'},{year:'2050',text:'First children born in low gravity — new physiological baseline'},{year:'2100',text:'Homo Spaciens — distinct adaptations from Earth-born humans'}],
+    details:[{key:'Current Research',val:'NASA twin study — gene expression changes in space'},{key:'Long-Term Risk',val:'Radiation, muscle/bone loss, fluid shifts'},{key:'Solution Path',val:'Gene editing · artificial gravity · pharmacology'}],
+    impact:'"We will not just go to space — we will change to survive it. Evolution will no longer be governed by Earth alone."'
+  },
+  {
+    id:'unknown', name:'THE UNKNOWN', cat:'Final Chapter — Mystery',
+    glow:'#818cf8', image:'fut_unknown.png',
+    tagline:'"The greatest discoveries are the ones we cannot yet imagine."',
+    tech:[{label:'Dark Matter',value:'~27% of Universe'},{label:'Dark Energy',value:'~68% of Universe'},{label:'Known Physics',value:'Only ~5% explains'},{label:'Questions',value:'∞ Remaining'}],
+    timeline:[{year:'Unknown',text:'Detection of dark matter — physics rewritten'},{year:'Unknown',text:'First contact — or confirmation of cosmic silence'},{year:'Unknown',text:'A discovery so profound we cannot yet name it'}],
+    details:[{key:'Dark Matter',val:'Invisible — detected only by gravitational effect'},{key:'Fermi Paradox',val:'Where is everyone? We still don\'t know.'},{key:'Multiverse',val:'Theoretical — untestable with current physics'}],
+    impact:'"The greatest discoveries are the ones we cannot yet imagine. Everything we know is the preface to a story not yet written."'
+  }
+];
+
+(function(){
+  const c=document.getElementById('starsBg'),ctx=c.getContext('2d');
+  let stars=[];
+  function resize(){
+    c.width=window.innerWidth; c.height=window.innerHeight; stars=[];
+    const n=Math.floor(c.width*c.height/3200);
+    for(let i=0;i<n;i++) stars.push({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.2+0.2,o:Math.random()*0.5+0.12,t:Math.random()*Math.PI*2,s:Math.random()*4+2});
+  }
+  function draw(ts){
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(s=>{const o=s.o*(0.5+0.5*Math.sin(ts*0.0005/s.s+s.t));ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${o})`;ctx.fill();});
+    requestAnimationFrame(draw);
+  }
+  resize(); window.addEventListener('resize',resize); requestAnimationFrame(draw);
+})();
+
+const wrap=document.getElementById('sectionsWrap');
+
+SECS.forEach(sec=>{
+  const el=document.createElement('div');
+  el.className='planet-section'; 
+  el.id='s-'+sec.id;
+  el.style.setProperty('--glow',sec.glow);
+
+  const techHTML=sec.tech.map(t=>`<div class="tech-item"><span class="tech-label">${t.label}</span><span class="tech-value">${t.value}</span></div>`).join('');
+  const tlHTML=sec.timeline.map(t=>`<div class="timeline-row"><div class="tl-dot"></div><div class="tl-text"><span class="tl-year">${t.year}</span>${t.text}</div></div>`).join('');
+  const detHTML=sec.details.map(d=>`<div class="detail-row">${d.key}: <span>${d.val}</span></div>`).join('');
+
+  el.innerHTML=`
+    <div class="sec-bg" style="background-image:url('${sec.image}')"></div>
+    <div class="sec-vignette"></div>
+    <div class="dark-tint"></div>
+
+    <div class="title-block">
+      <div class="sec-category">${sec.cat}</div>
+      <div class="sec-title">${sec.name}</div>
+      <div class="sec-tagline">${sec.tagline}</div>
+    </div>
+
+    <div class="hero-img-wrap">
+      <img src="${sec.image}" alt="${sec.name}">
+    </div>
+
+    <div class="ui-right">
+      <div class="panel">
+        <div class="panel-header">CORE TECHNOLOGY</div>
+        <div class="tech-grid">${techHTML}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">TIMELINE PROJECTION</div>
+        ${tlHTML}
+      </div>
+      <div class="panel">
+        <div class="panel-header">KEY FACTS</div>
+        ${detHTML}
+      </div>
+    </div>
+
+    <div class="impact-box">
+      <div class="impact-label">IMPACT STATEMENT</div>
+      <div class="impact-text">${sec.impact}</div>
+    </div>
+  `;
+  wrap.appendChild(el);
+});
+
+let cur=0; 
+const total=SECS.length; 
+let transitioning=false;
+
+const overlay=document.getElementById('transOverlay');
+const counter=document.getElementById('counter');
+const topLabel=document.getElementById('topLabel');
+const finaleBtn=document.getElementById('finaleBtn');
+
+const dotsNav=document.getElementById('dotsNav');
+SECS.forEach((_,i)=>{
+  const d=document.createElement('div'); 
+  d.className='dot';
+  d.addEventListener('click',()=>goTo(i));
+  dotsNav.appendChild(d);
+});
+
+function goTo(idx){
+  if(transitioning || idx===cur) return;
+  if(idx<0 || idx>=total) return;
+  transitioning=true;
+  overlay.classList.add('fade');
+  setTimeout(()=>{
+    document.querySelector('.planet-section.active')?.classList.remove('active');
+    cur=idx; 
+    showSection();
+    overlay.classList.remove('fade');
+    setTimeout(()=>{transitioning=false;},400);
+  },380);
+}
+
+function showSection(){
+  const sec=SECS[cur];
+  document.getElementById('s-'+sec.id).classList.add('active');
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===cur));
+  counter.textContent=String(cur+1).padStart(2,'0')+' / '+String(total).padStart(2,'0');
+  topLabel.textContent=sec.name+' · '+sec.cat;
+  finaleBtn.classList.toggle('show', cur===total-1);
+  document.getElementById('navPrev').style.opacity=cur===0?'0.2':'1';
+  document.getElementById('navNext').style.opacity=cur===total-1?'0.2':'1';
+}
+
+// Initialize
+document.getElementById('s-'+SECS[0].id).classList.add('active');
+showSection();
+
+document.getElementById('navPrev').addEventListener('click',()=>goTo(cur-1));
+document.getElementById('navNext').addEventListener('click',()=>goTo(cur+1));
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') goTo(cur+1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') goTo(cur-1);
+});
+
+let wc=false;
+window.addEventListener('wheel',e=>{
+  if(wc) return; 
+  wc=true; 
+  setTimeout(()=>{wc=false;},900);
+  if(e.deltaY>0) goTo(cur+1); 
+  else goTo(cur-1);
+},{passive:true});
+
+let tx=0, ty=0;
+window.addEventListener('touchstart',e=>{tx=e.touches[0].clientX; ty=e.touches[0].clientY;},{passive:true});
+window.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX - tx;
+  const dy=e.changedTouches[0].clientY - ty;
+  if(Math.abs(dx)>Math.abs(dy)){
+    if(dx < -40) goTo(cur+1);
+    if(dx > 40) goTo(cur-1);
+  } else {
+    if(dy < -40) goTo(cur+1);
+    if(dy > 40) goTo(cur-1);
+  }
+},{passive:true});
+
+window.addEventListener('resize', () => {
+  // Optional: refresh stars if needed
+});
+</script>
+</body>
+</html>

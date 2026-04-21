@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planetary Rovers | Orbital Technologies</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --mars-deep:    #0d0500;
+      --mars-surface: #1a0a02;
+      --dust-mid:     #7c3a12;
+      --dust-light:   #c2652a;
+      --rust:         #b45309;
+      --rust-glow:    #d97706;
+      --sand:         #92400e;
+      --text-dim:     #78350f;
+      --text-body:    #a16207;
+      --text-bright:  #d4a574;
+      --text-read:    #c4a882;
+      --mono:         'Share Tech Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--mars-deep);
+      color: var(--text-read);
+      font-family: 'Rajdhani', system-ui, sans-serif;
+      line-height: 1.8;
+      overflow-x: hidden;
+    }
+
+    .mars-atmo {
+      position: fixed; inset: 0; z-index: -4;
+      background: radial-gradient(ellipse at 50% 0%, #1a0800 0%, #0a0300 40%, #000 100%);
+    }
+
+    .horizon {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 35%;
+      background: linear-gradient(to top, rgba(180,83,9,0.12) 0%, rgba(120,53,18,0.06) 40%, transparent 100%);
+      z-index: -3; pointer-events: none;
+    }
+
+    .vignette {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+    }
+
+    .grain {
+      position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    #dustCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    #surfaceCanvas { position: fixed; bottom: 0; left: 0; width: 100%; height: 180px; z-index: 0; pointer-events: none; }
+
+    .progress-bar {
+      position: fixed; top: 0; left: 0; height: 2px;
+      background: linear-gradient(to right, #92400e, #d97706, #b45309, #d97706, #92400e);
+      background-size: 200% 100%;
+      animation: shimmer 4s linear infinite;
+      z-index: 300; transition: width 0.2s ease;
+      box-shadow: 0 0 8px rgba(217,119,6,0.5);
+    }
+    @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+
+    .back-btn {
+      position: fixed; top: 28px; left: 28px; z-index: 200;
+      background: rgba(5,2,0,0.85); backdrop-filter: blur(10px);
+      border: 1px solid rgba(180,83,9,0.4); color: #d97706;
+      padding: 10px 20px; border-radius: 9999px;
+      font-family: 'Orbitron', sans-serif; font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 8px;
+      transition: all 0.4s ease;
+    }
+    .back-btn:hover {
+      background: rgba(92,44,6,0.5); border-color: #d97706;
+      box-shadow: 0 0 24px rgba(217,119,6,0.3); transform: translateX(-4px);
+    }
+
+    .hud {
+      position: fixed; top: 28px; right: 28px; z-index: 200;
+      font-family: var(--mono); font-size: 0.6rem;
+      color: rgba(180,83,9,0.55); letter-spacing: 0.08em;
+      text-align: right; line-height: 2.2; pointer-events: none;
+    }
+    .hud-val { color: rgba(217,119,6,0.85); }
+
+    .section-indicator {
+      position: fixed; right: 28px; top: 50%; transform: translateY(-50%);
+      z-index: 100; display: flex; flex-direction: column; gap: 14px;
+    }
+    .sec-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(180,83,9,0.2); border: 1px solid rgba(180,83,9,0.5);
+      transition: all 0.5s ease; cursor: pointer;
+    }
+    .sec-dot.active {
+      background: #d97706; box-shadow: 0 0 12px rgba(217,119,6,0.8);
+      transform: scale(1.7);
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      position: relative; min-height: 100vh;
+      padding: 130px 8% 110px;
+      z-index: 10; display: flex; align-items: center;
+    }
+
+    #sec-0 { justify-content: flex-start; }
+    #sec-1 { justify-content: flex-start; }
+    #sec-2 { justify-content: flex-end; }
+    #sec-3 { justify-content: flex-start; }
+    #sec-4 { justify-content: flex-end; }
+    #sec-5 { justify-content: flex-start; }
+
+    /* ── CONTENT CARD ── */
+    .content {
+      max-width: 680px; width: 100%;
+      background: rgba(8,3,0,0.88);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(180,83,9,0.25);
+      border-radius: 2px;
+      padding: 52px 56px;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.95),
+        0 50px 120px rgba(0,0,0,0.95),
+        inset 0 1px 0 rgba(255,200,100,0.03);
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 1.2s ease, transform 1.4s cubic-bezier(0.16,1,0.3,1);
+      position: relative; overflow: hidden;
+    }
+    .content::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(to right, transparent, rgba(180,83,9,0.4), transparent);
+    }
+    .content::before {
+      content: ''; position: absolute; top: 12px; left: 12px;
+      width: 22px; height: 22px;
+      border-top: 1px solid rgba(180,83,9,0.45);
+      border-left: 1px solid rgba(180,83,9,0.45);
+    }
+    .content.in-view { opacity: 1; transform: translateY(0); }
+
+    /* ── ROVER IMAGE — 520×437px ── */
+    .rover-img-wrap {
+      position: absolute;
+      width: 520px;
+      height: 437px;
+      border: 1px solid rgba(180,83,9,0.22);
+      border-radius: 2px; overflow: hidden;
+      box-shadow: 0 0 80px rgba(0,0,0,0.97), 0 0 30px rgba(180,83,9,0.06);
+      opacity: 0;
+      transition: opacity 1.3s ease 0.5s, transform 1.4s cubic-bezier(0.16,1,0.3,1) 0.5s;
+      top: 50%;
+    }
+    .rover-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      filter: brightness(0.75) saturate(0.6) sepia(0.3);
+    }
+    .rover-img-wrap::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(8,3,0,0.7) 0%, transparent 60%);
+    }
+
+    /* Content LEFT → image RIGHT */
+    #sec-1 .rover-img-wrap,
+    #sec-3 .rover-img-wrap,
+    #sec-5 .rover-img-wrap {
+      right: 3%;
+      transform: translateY(-50%) translateX(24px);
+    }
+    #sec-1 .rover-img-wrap.in-view,
+    #sec-3 .rover-img-wrap.in-view,
+    #sec-5 .rover-img-wrap.in-view {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    /* Content RIGHT → image LEFT */
+    #sec-2 .rover-img-wrap,
+    #sec-4 .rover-img-wrap {
+      left: 3%;
+      transform: translateY(-50%) translateX(-24px);
+    }
+    #sec-2 .rover-img-wrap.in-view,
+    #sec-4 .rover-img-wrap.in-view {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    /* ── TYPOGRAPHY ── */
+    h1 {
+      font-family: 'Orbitron', sans-serif; font-size: 2.9rem; font-weight: 900;
+      line-height: 1.12; margin-bottom: 26px;
+      background: linear-gradient(135deg, #fef3c7 0%, #d97706 45%, #92400e 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 0 20px rgba(180,83,9,0.2));
+    }
+
+    h2 {
+      font-family: 'Orbitron', sans-serif; font-size: 1.65rem; font-weight: 700;
+      line-height: 1.25; margin-bottom: 8px; color: #d4a574;
+    }
+
+    .rover-id {
+      font-family: var(--mono); font-size: 0.62rem;
+      color: rgba(180,83,9,0.7); letter-spacing: 0.22em;
+      margin-bottom: 18px; display: flex; align-items: center; gap: 10px;
+    }
+    .rover-id::before {
+      content: ''; display: inline-block; width: 28px; height: 1px;
+      background: linear-gradient(to right, #92400e, #d97706);
+    }
+
+    .quote {
+      font-size: 1.18rem; font-style: italic;
+      color: rgba(212,165,116,0.8);
+      margin: 30px 0;
+      border-left: 2px solid rgba(180,83,9,0.5);
+      padding-left: 22px; line-height: 1.8;
+    }
+
+    p { font-size: 1.06rem; margin-bottom: 18px; color: var(--text-read); font-weight: 400; }
+
+    .telemetry {
+      margin-top: 26px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .tele-item {
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(180,83,9,0.15);
+      border-radius: 2px; padding: 10px 14px;
+      font-family: var(--mono); font-size: 0.66rem; line-height: 1.7;
+      position: relative; overflow: hidden;
+    }
+    .tele-item::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 2px; height: 100%;
+      background: rgba(180,83,9,0.3);
+    }
+    .tele-label {
+      color: rgba(180,83,9,0.5); display: block;
+      text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.56rem;
+    }
+    .tele-val { color: #d4a574; font-size: 0.74rem; }
+    .tele-val.active  { color: #4ade80; }
+    .tele-val.dormant { color: #64748b; }
+    .tele-val.warn    { color: #d97706; }
+
+    .keypoints { margin-top: 22px; display: flex; flex-direction: column; gap: 9px; }
+    .kp {
+      display: flex; align-items: flex-start; gap: 12px;
+      font-size: 0.96rem; color: var(--text-bright); line-height: 1.5;
+    }
+    .kp::before {
+      content: '›'; color: rgba(180,83,9,0.8); font-size: 1rem;
+      flex-shrink: 0; margin-top: 1px;
+    }
+
+    .highlight-box {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(180,83,9,0.2);
+      border-left: 2px solid rgba(180,83,9,0.6);
+      padding: 20px 26px; border-radius: 2px; margin: 24px 0;
+      font-size: 1.01rem; line-height: 1.85;
+      color: rgba(196,168,130,0.7); font-style: italic;
+    }
+
+    .rover-scene {
+      position: fixed; bottom: 0; left: 0; width: 100%;
+      height: 140px; z-index: 3; pointer-events: none; overflow: hidden;
+    }
+
+    /* ── CLOSING SECTION ── */
+    #sec-end {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 120px 8%;
+      position: relative; z-index: 10;
+    }
+    .horizon-line {
+      width: 100%; max-width: 600px; height: 1px;
+      background: linear-gradient(to right, transparent, rgba(180,83,9,0.4), transparent);
+      margin: 0 auto 50px;
+      opacity: 0; transition: opacity 1.5s ease;
+    }
+    .horizon-line.visible { opacity: 1; }
+
+    .end-rover-wrap {
+      margin-bottom: 50px;
+      opacity: 0; transform: translateX(-40px);
+      transition: opacity 2s ease 0.3s, transform 2.5s cubic-bezier(0.16,1,0.3,1) 0.3s;
+    }
+    .end-rover-wrap.visible { opacity: 1; transform: translateX(0); }
+
+    .end-label {
+      font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.22em;
+      color: rgba(180,83,9,0.35); margin-bottom: 18px;
+      opacity: 0; transition: opacity 1.5s ease 0.8s;
+    }
+    .end-label.visible { opacity: 1; }
+
+    .end-title {
+      font-family: 'Orbitron', sans-serif; font-size: 1.3rem; font-weight: 700;
+      color: rgba(212,165,116,0.22); letter-spacing: 0.1em; margin-bottom: 14px;
+      opacity: 0; transition: opacity 1.5s ease 1.1s;
+    }
+    .end-title.visible { opacity: 1; }
+
+    .end-coords {
+      font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em;
+      color: rgba(180,83,9,0.22); line-height: 2.2;
+      opacity: 0; transition: opacity 2s ease 1.5s;
+    }
+    .end-coords.visible { opacity: 1; }
+
+    .next-btn {
+      position: fixed; bottom: 44px; right: 52px;
+      padding: 16px 42px;
+      background: rgba(5,2,0,0.92); backdrop-filter: blur(12px);
+      border: 1px solid rgba(180,83,9,0.6); color: #d97706;
+      border-radius: 2px;
+      font-family: 'Orbitron', sans-serif; font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      cursor: pointer; z-index: 100;
+      display: flex; align-items: center; gap: 12px;
+      transition: all 0.5s ease;
+      box-shadow: 0 0 20px rgba(180,83,9,0.07);
+    }
+    .next-btn:hover {
+      background: rgba(92,44,6,0.35); border-color: #d97706;
+      box-shadow: 0 0 50px rgba(217,119,6,0.4), 0 0 100px rgba(217,119,6,0.1);
+      transform: translateY(-3px);
+    }
+    .next-btn .arrow { transition: transform 0.4s ease; }
+    .next-btn:hover .arrow { transform: translateX(6px); }
+
+    .glitch-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      pointer-events: none; opacity: 0; background: #000;
+    }
+    .glitch-overlay.active { animation: glitchSeq 2s ease-in-out forwards; }
+    @keyframes glitchSeq {
+      0%{opacity:0} 8%{opacity:1;background:#080300} 10%{opacity:0.3;background:#fff;transform:translateX(-8px)}
+      11%{opacity:1;background:#080300;transform:translateX(5px)} 13%{opacity:0;transform:translateX(0)}
+      29%{opacity:0} 31%{opacity:0.9;background:#050200} 33%{opacity:0.15;background:#d97706;transform:translateX(-12px) skewX(-4deg)}
+      35%{opacity:1;background:#000;transform:translateX(9px) skewX(3deg)} 37%{opacity:0;transform:translateX(0) skewX(0)}
+      68%{opacity:0} 70%{opacity:1;background:#000} 72%{opacity:0.4;background:#fff;transform:scaleX(1.04)}
+      74%{opacity:1;background:#000;transform:scaleX(1)} 77%{opacity:0.08;background:#b45309}
+      79%{opacity:1;background:#000} 100%{opacity:1;background:#000}
+    }
+
+    @keyframes pageEntrance { 0%{opacity:0} 100%{opacity:1} }
+    body { animation: pageEntrance 1.4s ease-out forwards; }
+
+    @media (max-width: 1100px) {
+      .rover-img-wrap { width: 380px; height: 320px; }
+    }
+    @media (max-width: 900px) {
+      .rover-img-wrap { display: none; }
+      h1 { font-size: 2rem; } h2 { font-size: 1.35rem; }
+      section { padding: 100px 5% 80px; justify-content: center !important; }
+      .content { padding: 32px 20px; }
+      .telemetry { grid-template-columns: 1fr; }
+      .next-btn { padding: 12px 26px; font-size: 0.7rem; right: 16px; bottom: 16px; }
+      .hud { display: none; }
+      .rover-scene { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+<div class="mars-atmo"></div>
+<div class="horizon"></div>
+<div class="vignette"></div>
+<div class="grain"></div>
+<canvas id="dustCanvas"></canvas>
+<canvas id="surfaceCanvas"></canvas>
+<div class="glitch-overlay" id="glitchOverlay"></div>
+
+<div class="rover-scene" id="roverScene">
+  <canvas id="roverCanvas" style="width:100%;height:100%;"></canvas>
+</div>
+
+<div class="hud">
+  <span style="display:block">SOL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="hud-val" id="hudSol">——</span></span>
+  <span style="display:block">TEMP &nbsp;&nbsp;&nbsp;&nbsp;<span class="hud-val" id="hudTemp">——</span></span>
+  <span style="display:block">WIND &nbsp;&nbsp;&nbsp;&nbsp;<span class="hud-val" id="hudWind">——</span></span>
+  <span style="display:block">POWER &nbsp;&nbsp;&nbsp;<span class="hud-val" id="hudPower">——</span></span>
+</div>
+
+<a href="index.html" class="back-btn">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  BACK
+</a>
+
+<div class="section-indicator" id="sectionIndicator"></div>
+
+<section id="sec-0">
+  <div class="content">
+    <div class="rover-id">MISSION CLASS — SURFACE EXPLORATION</div>
+    <h1>Planetary Rovers</h1>
+    <div class="quote">Across distant worlds, they move — slowly, silently, searching.</div>
+    <p>Planetary rovers are robotic explorers designed to travel across the surfaces of other worlds. They analyze terrain, collect samples, and search for signs of life — acting as humanity's hands and eyes beyond Earth.</p>
+    <p>Each wheel turn is a command sent across millions of kilometers. Each photo, a postcard from another world. Each rock examined, a question asked of a planet that has kept its secrets for four billion years.</p>
+    <div class="highlight-box">
+      Mars rovers have collectively driven over 100 kilometers on another planet. Every centimeter was earned — planned days in advance, executed with caution, and confirmed hours after it happened.
+    </div>
+    <div class="telemetry">
+      <div class="tele-item"><span class="tele-label">Active Rovers</span><span class="tele-val active">● Curiosity, Perseverance</span></div>
+      <div class="tele-item"><span class="tele-label">Signal Delay</span><span class="tele-val">3–22 Minutes</span></div>
+      <div class="tele-item"><span class="tele-label">Mars Day (Sol)</span><span class="tele-val">24h 37m</span></div>
+      <div class="tele-item"><span class="tele-label">Avg. Surface Temp</span><span class="tele-val warn">−60°C</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="sec-1">
+  <div class="content">
+    <div class="rover-id">ROVER — 001 / SOJOURNER</div>
+    <h2>The First Steps</h2>
+    <p>Sojourner was the first rover to operate on another planet. It proved that mobile exploration on Mars was possible, marking a new era in robotic space missions — and changing what we believed we could do.</p>
+    <p>Roughly the size of a microwave oven, it carried cameras and an alpha proton X-ray spectrometer, analyzing the chemical composition of rocks no human hand had ever touched.</p>
+    <div class="telemetry">
+      <div class="tele-item"><span class="tele-label">Landed</span><span class="tele-val">July 4, 1997</span></div>
+      <div class="tele-item"><span class="tele-label">Status</span><span class="tele-val dormant">● Mission Complete</span></div>
+      <div class="tele-item"><span class="tele-label">Distance Traveled</span><span class="tele-val">~100 m</span></div>
+      <div class="tele-item"><span class="tele-label">Mission Duration</span><span class="tele-val">83 Sols</span></div>
+    </div>
+    <div class="keypoints">
+      <div class="kp">First mobile rover on another planet</div>
+      <div class="kp">Mars Pathfinder mission</div>
+      <div class="kp">Proved remote surface navigation was feasible</div>
+    </div>
+  </div>
+  <div class="rover-img-wrap" id="img-1">
+    <img src="rover_sojourner.png" alt="Sojourner Rover">
+  </div>
+</section>
+
+<section id="sec-2">
+  <div class="rover-img-wrap" id="img-2">
+    <img src="rover_spirit.png" alt="Spirit and Opportunity">
+  </div>
+  <div class="content">
+    <div class="rover-id">ROVER — 002 / SPIRIT & OPPORTUNITY</div>
+    <h2>The Twin Explorers</h2>
+    <p>These twin rovers explored Mars far beyond their expected 90-sol lifetimes. Spirit operated for 6 years; Opportunity for nearly 15 — a machine that was never supposed to survive a single Martian winter.</p>
+    <p>They discovered strong evidence that liquid water once flowed across the Martian surface — a finding that fundamentally changed our understanding of Mars' past and the possibility of life.</p>
+    <div class="telemetry">
+      <div class="tele-item"><span class="tele-label">Landed</span><span class="tele-val">January 2004</span></div>
+      <div class="tele-item"><span class="tele-label">Status</span><span class="tele-val dormant">● Silent</span></div>
+      <div class="tele-item"><span class="tele-label">Opportunity Total Distance</span><span class="tele-val warn">45.16 km</span></div>
+      <div class="tele-item"><span class="tele-label">Opportunity Mission</span><span class="tele-val">5,111 Sols</span></div>
+    </div>
+    <div class="keypoints">
+      <div class="kp">Found evidence of ancient liquid water on Mars</div>
+      <div class="kp">Opportunity — Mars distance record holder</div>
+      <div class="kp">Operated 60× longer than planned</div>
+    </div>
+  </div>
+</section>
+
+<section id="sec-3">
+  <div class="content">
+    <div class="rover-id">ROVER — 003 / CURIOSITY</div>
+    <h2>A Mobile Laboratory</h2>
+    <p>Curiosity is a car-sized rover equipped with 17 cameras and 10 advanced scientific instruments. It studies Mars' climate and geology, searching for conditions that could have supported microbial life.</p>
+    <p>Nuclear-powered, it does not depend on sunlight to operate — allowing it to survive Martian winters and dust storms that silenced its solar-powered predecessors forever.</p>
+    <div class="telemetry">
+      <div class="tele-item"><span class="tele-label">Landed</span><span class="tele-val">August 6, 2012</span></div>
+      <div class="tele-item"><span class="tele-label">Status</span><span class="tele-val active">● Active</span></div>
+      <div class="tele-item"><span class="tele-label">Distance Traveled</span><span class="tele-val warn">32+ km</span></div>
+      <div class="tele-item"><span class="tele-label">Power Source</span><span class="tele-val">Nuclear RTG</span></div>
+    </div>
+    <div class="keypoints">
+      <div class="kp">Confirmed ancient habitable environment in Gale Crater</div>
+      <div class="kp">Nuclear-powered — immune to dust storms</div>
+      <div class="kp">10 onboard scientific instruments</div>
+    </div>
+  </div>
+  <div class="rover-img-wrap" id="img-3">
+    <img src="rover_curiosity.png" alt="Curiosity Rover">
+  </div>
+</section>
+
+<section id="sec-4">
+  <div class="rover-img-wrap" id="img-4">
+    <img src="rover_perseverance.png" alt="Perseverance Rover">
+  </div>
+  <div class="content">
+    <div class="rover-id">ROVER — 004 / PERSEVERANCE</div>
+    <h2>Seeking Ancient Life</h2>
+    <p>Perseverance is the most capable rover ever sent to another world. It is designed specifically to search for signs of ancient microbial life, collecting rock and soil samples that may one day be returned to Earth.</p>
+    <p>It also carried Ingenuity — a small helicopter that achieved the first powered flight on another planet. What the Wright Brothers did for Earth, Ingenuity did for Mars.</p>
+    <div class="telemetry">
+      <div class="tele-item"><span class="tele-label">Landed</span><span class="tele-val">February 18, 2021</span></div>
+      <div class="tele-item"><span class="tele-label">Status</span><span class="tele-val active">● Active</span></div>
+      <div class="tele-item"><span class="tele-label">Samples Cached</span><span class="tele-val warn">23 Tubes</span></div>
+      <div class="tele-item"><span class="tele-label">Companion</span><span class="tele-val">Ingenuity Helicopter</span></div>
+    </div>
+    <div class="keypoints">
+      <div class="kp">Searching for biosignatures in ancient lakebed</div>
+      <div class="kp">Sample return mission — tubes await retrieval</div>
+      <div class="kp">First powered flight on another planet (Ingenuity)</div>
+    </div>
+  </div>
+</section>
+
+<section id="sec-5">
+  <div class="content">
+    <div class="rover-id">ROVER — 005 / LUNAR ROVERS</div>
+    <h2>Driving on the Moon</h2>
+    <p>Used during Apollo missions 15, 16, and 17, the Lunar Roving Vehicle allowed astronauts to explore the Moon's surface far beyond walking distance — covering terrain that would have been unreachable on foot.</p>
+    <p>Electric-powered, it carried the astronauts, their tools, and rock samples across the lunar regolith at up to 18 km/h — the only crewed vehicle ever driven on another world.</p>
+    <div class="highlight-box">
+      The last human to drive on another world was Eugene Cernan, during Apollo 17 in December 1972. No human has driven on the Moon — or any other world — since.
+    </div>
+    <div class="telemetry">
+      <div class="tele-item"><span class="tele-label">Missions Used</span><span class="tele-val">Apollo 15, 16, 17</span></div>
+      <div class="tele-item"><span class="tele-label">Status</span><span class="tele-val dormant">● Still on Moon</span></div>
+      <div class="tele-item"><span class="tele-label">Max Speed</span><span class="tele-val">18 km/h</span></div>
+      <div class="tele-item"><span class="tele-label">Last Drive</span><span class="tele-val">December 1972</span></div>
+    </div>
+    <div class="keypoints">
+      <div class="kp">Only crewed vehicle driven on another world</div>
+      <div class="kp">Expanded Apollo exploration range 10×</div>
+      <div class="kp">Three units remain parked on the lunar surface</div>
+    </div>
+  </div>
+  <div class="rover-img-wrap" id="img-5">
+    <img src="rover_lunar.png" alt="Lunar Rover">
+  </div>
+</section>
+
+<section id="sec-end">
+  <div class="horizon-line" id="horizonLine"></div>
+  <div class="end-rover-wrap" id="endRover">
+    <svg viewBox="0 0 280 100" width="280" xmlns="http://www.w3.org/2000/svg" style="opacity:0.55;">
+      <ellipse cx="140" cy="92" rx="100" ry="5" fill="rgba(180,83,9,0.12)"/>
+      <circle cx="72"  cy="80" r="12" fill="none" stroke="rgba(180,83,9,0.5)" stroke-width="2"/>
+      <circle cx="72"  cy="80" r="5"  fill="rgba(180,83,9,0.2)"/>
+      <circle cx="108" cy="82" r="12" fill="none" stroke="rgba(180,83,9,0.5)" stroke-width="2"/>
+      <circle cx="108" cy="82" r="5"  fill="rgba(180,83,9,0.2)"/>
+      <circle cx="172" cy="82" r="12" fill="none" stroke="rgba(180,83,9,0.5)" stroke-width="2"/>
+      <circle cx="172" cy="82" r="5"  fill="rgba(180,83,9,0.2)"/>
+      <circle cx="208" cy="80" r="12" fill="none" stroke="rgba(180,83,9,0.5)" stroke-width="2"/>
+      <circle cx="208" cy="80" r="5"  fill="rgba(180,83,9,0.2)"/>
+      <rect x="80" y="52" width="120" height="30" rx="4" fill="rgba(8,3,0,0.9)" stroke="rgba(180,83,9,0.45)" stroke-width="1.5"/>
+      <rect x="88" y="34" width="104" height="18" rx="2" fill="rgba(180,83,9,0.2)" stroke="rgba(180,83,9,0.5)" stroke-width="1.2"/>
+      <line x1="140" y1="34" x2="140" y2="52" stroke="rgba(180,83,9,0.4)" stroke-width="1"/>
+      <line x1="88"  y1="43" x2="192" y2="43" stroke="rgba(180,83,9,0.25)" stroke-width="1"/>
+      <line x1="160" y1="52" x2="160" y2="24" stroke="rgba(180,83,9,0.5)" stroke-width="1.5"/>
+      <circle cx="160" cy="22" r="5" fill="none" stroke="rgba(217,119,6,0.6)" stroke-width="1.5"/>
+      <line x1="90" y1="62" x2="60" y2="74" stroke="rgba(180,83,9,0.4)" stroke-width="1.5"/>
+      <circle cx="58" cy="75" r="4" fill="rgba(180,83,9,0.3)" stroke="rgba(180,83,9,0.5)" stroke-width="1"/>
+      <path d="M10 88 Q40 87 72 88" stroke="rgba(180,83,9,0.18)" stroke-width="2" fill="none"/>
+      <path d="M10 84 Q40 83 72 84" stroke="rgba(180,83,9,0.12)" stroke-width="2" fill="none"/>
+    </svg>
+  </div>
+  <div class="end-label" id="endLabel">PERSEVERANCE — SOL 1,500+</div>
+  <div class="end-title" id="endTitle">Still Rolling. Still Searching.</div>
+  <div class="end-coords" id="endCoords">
+    18.4446° N · 77.4509° E · JEZERO CRATER · MARS<br>
+    MISSION STATUS: NOMINAL · SAMPLE TUBES CACHED: 23<br><br>
+    <span style="color:rgba(180,83,9,0.18);font-size:0.56rem;">
+      "Somewhere, something incredible is waiting to be known."
+    </span>
+  </div>
+</section>
+
+<button class="next-btn" id="nextBtn">
+  NEXT SECTION <span class="arrow">→</span>
+</button>
+
+<script>
+(function(){
+  const c=document.getElementById('dustCanvas'),ctx=c.getContext('2d');
+  let W,H,particles=[];
+  const dustColors=[[180,83,9],[146,64,14],[120,53,18],[180,120,60],[200,140,80]];
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}
+  function init(){
+    particles=[];
+    const count=Math.floor(W*0.08);
+    for(let i=0;i<count;i++){
+      const col=dustColors[Math.floor(Math.random()*dustColors.length)];
+      particles.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*2.2+0.3,vx:(Math.random()*0.5+0.1)*(Math.random()>0.5?1:-1)*0.4,vy:-Math.random()*0.3-0.05,o:Math.random()*0.18+0.03,col,wobble:Math.random()*Math.PI*2,wobbleSpeed:Math.random()*0.01+0.003});
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{
+      p.wobble+=p.wobbleSpeed;
+      p.x+=p.vx+Math.sin(p.wobble)*0.15; p.y+=p.vy;
+      if(p.y<-10){p.y=H+10;p.x=Math.random()*W;}
+      if(p.x<-10)p.x=W+10; if(p.x>W+10)p.x=-10;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.col[0]},${p.col[1]},${p.col[2]},${p.o})`;ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize();init();window.addEventListener('resize',()=>{resize();init();});requestAnimationFrame(draw);
+})();
+
+(function(){
+  const c=document.getElementById('roverCanvas'),ctx=c.getContext('2d');
+  let W,H,roverX=-200,opacity=0;
+  const SPEED=0.18;
+  function resize(){W=c.width=c.offsetWidth;H=c.height=c.offsetHeight;}
+  function drawGround(){
+    const grad=ctx.createLinearGradient(0,H*0.4,0,H);
+    grad.addColorStop(0,'rgba(180,83,9,0)');grad.addColorStop(0.3,'rgba(120,53,18,0.06)');grad.addColorStop(1,'rgba(92,44,6,0.18)');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  }
+  function drawTracks(){
+    [H*0.55,H*0.65].forEach(ty=>{
+      ctx.beginPath();ctx.moveTo(0,ty);ctx.lineTo(Math.min(roverX+60,W),ty);
+      ctx.strokeStyle='rgba(180,83,9,0.15)';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.stroke();ctx.setLineDash([]);
+    });
+  }
+  function drawRover(x){
+    const y=H*0.55;
+    ctx.save();ctx.globalAlpha=opacity*0.7;
+    [x+14,x+34,x+66,x+86].forEach(wx=>{
+      ctx.beginPath();ctx.arc(wx,y+22,11,0,Math.PI*2);ctx.strokeStyle='rgba(180,83,9,0.6)';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.beginPath();ctx.arc(wx,y+22,5,0,Math.PI*2);ctx.fillStyle='rgba(180,83,9,0.3)';ctx.fill();
+    });
+    ctx.fillStyle='rgba(8,3,0,0.9)';ctx.strokeStyle='rgba(180,83,9,0.5)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.roundRect(x+18,y,64,20,3);ctx.fill();ctx.stroke();
+    ctx.fillStyle='rgba(180,83,9,0.15)';ctx.strokeStyle='rgba(180,83,9,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(x+22,y-14,56,12,2);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+70,y);ctx.lineTo(x+70,y-22);ctx.strokeStyle='rgba(180,83,9,0.5)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.beginPath();ctx.arc(x+70,y-24,4,0,Math.PI*2);ctx.strokeStyle='rgba(217,119,6,0.6)';ctx.stroke();
+    ctx.restore();
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);drawGround();drawTracks();
+    if(opacity>0.01)drawRover(roverX);
+    roverX+=SPEED;if(roverX>W+200)roverX=-200;
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('scroll',()=>{const prog=window.scrollY/(document.documentElement.scrollHeight-window.innerHeight);opacity=Math.min(1,prog*3);},{passive:true});
+  resize();window.addEventListener('resize',resize);requestAnimationFrame(draw);
+})();
+
+(function(){
+  const sols=['1,956','5,111','83','1,500+','3,724'];
+  const temps=['-63°C','-78°C','-42°C','-55°C','-80°C'];
+  const winds=['7 m/s NE','12 m/s SW','3 m/s N','9 m/s W','15 m/s NE'];
+  const pows=['RTG 110W','Solar 140W','Solar 20W','RTG 110W','Battery'];
+  let i=0;
+  function cycle(){document.getElementById('hudSol').textContent=sols[i%sols.length];document.getElementById('hudTemp').textContent=temps[i%temps.length];document.getElementById('hudWind').textContent=winds[i%winds.length];document.getElementById('hudPower').textContent=pows[i%pows.length];i++;}
+  cycle();setInterval(cycle,3800);
+})();
+
+function glitchRedirect(url){const g=document.getElementById('glitchOverlay');g.classList.add('active');setTimeout(()=>{window.location.href=url;},2100);}
+document.getElementById('nextBtn').addEventListener('click',()=>glitchRedirect('ORB_9.html'));
+
+const progressBar=document.getElementById('progress');
+window.addEventListener('scroll',()=>{progressBar.style.width=`${(window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100}%`;},{passive:true});
+
+const sections=[...document.querySelectorAll('section')];
+const indicator=document.getElementById('sectionIndicator');
+sections.forEach((_,i)=>{const dot=document.createElement('div');dot.className='sec-dot';dot.addEventListener('click',()=>sections[i].scrollIntoView({behavior:'smooth'}));indicator.appendChild(dot);});
+function updateDots(){const mid=window.scrollY+window.innerHeight/2;sections.forEach((sec,i)=>{const top=sec.getBoundingClientRect().top+window.scrollY;indicator.children[i].classList.toggle('active',mid>=top&&mid<top+sec.offsetHeight);});}
+
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('in-view');
+      const sec=e.target.closest('section');
+      if(sec){const imgId='img-'+sec.id.split('-')[1];const img=document.getElementById(imgId);if(img)img.classList.add('in-view');}
+    }
+  });
+},{threshold:0.1});
+document.querySelectorAll('.content').forEach(el=>observer.observe(el));
+
+const endObs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)['horizonLine','endRover','endLabel','endTitle','endCoords'].forEach(id=>document.getElementById(id)?.classList.add('visible'));});},{threshold:0.15});
+endObs.observe(document.getElementById('sec-end'));
+
+window.addEventListener('scroll',updateDots,{passive:true});
+updateDots();
+</script>
+</body>
+</html>

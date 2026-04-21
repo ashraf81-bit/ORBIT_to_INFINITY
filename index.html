@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Orbit to Infinity — Transcend</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    * {
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+ 
+    :root { color-scheme: dark; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Inter', system-ui, 'Segoe UI', sans-serif;
+    }
+ 
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at center, #060612 0%, #000 65%);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 0;
+    }
+ 
+    .ui-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+      opacity: 1;
+    }
+ 
+    .ui-layer.hidden-ui {
+      opacity: 0;
+      pointer-events: none;
+      visibility: visible;
+    }
+ 
+    .welcome {
+      position: fixed;
+      top: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 12px 60px;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border-radius: 9999px;
+      box-shadow: 0 0 40px rgba(100, 120, 255, 0.2);
+      white-space: nowrap;
+      pointer-events: none;
+      transition: transform 0.3s ease;
+    }
+ 
+    .title {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      text-align: center;
+      pointer-events: none;
+      text-shadow: 0 0 30px rgba(140, 160, 255, 0.6);
+      transition: opacity 0.5s ease;
+      line-height: 1.1;
+    }
+ 
+    .title .orbit-line {
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      display: block;
+    }
+ 
+    .title .to-line {
+      font-size: 1.1rem;
+      font-weight: 300;
+      letter-spacing: 0.55em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      display: block;
+      margin: 4px 0;
+    }
+ 
+    .title .infinity-line {
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      display: block;
+    }
+ 
+    .initiate-btn {
+      position: fixed;
+      bottom: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: auto;
+      background: rgba(6, 8, 20, 0.75);
+      backdrop-filter: blur(12px);
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      padding: 16px 52px;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border-radius: 9999px;
+      transition: all 0.4s ease;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+    }
+ 
+    .initiate-btn:hover {
+      background: rgba(96, 61, 255, 0.6);
+      border-color: rgba(140, 160, 255, 0.9);
+      transform: translateX(-50%) translateY(-4px);
+      box-shadow: 0 0 40px rgba(120, 100, 255, 0.5);
+    }
+ 
+    .status {
+      position: fixed;
+      bottom: 4%;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(232, 235, 255, 0.75);
+      font-size: 0.8rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      text-shadow: 0 0 14px rgba(138, 146, 255, 0.45);
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+ 
+    /* ===== MENU LAYER ===== */
+    .menu-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 200;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 1.5s ease-in-out;
+    }
+ 
+    .menu-layer.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+ 
+    .menu-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+ 
+    .menu-nodes {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+ 
+    .menu-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid rgba(255, 255, 255, 0.7);
+      color: white;
+      padding: 12px 28px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      border-radius: 9999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: auto;
+    }
+ 
+    .menu-node:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 1);
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.35);
+      transform: translate(-50%, -50%) scale(1.08);
+      z-index: 10;
+    }
+ 
+    /* ===== CENTER PENTAGON BUTTON ===== */
+    .center-poly-btn {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 300;
+      background: none;
+      border: none;
+      padding: 0;
+      outline: none;
+    }
+ 
+    .center-poly {
+      fill: rgba(255,255,255,0.08);
+      stroke: #ffffff;
+      stroke-width: 2.5;
+      transition: all 0.4s ease;
+      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+    }
+ 
+    .center-poly-btn:hover .center-poly {
+      fill: rgba(255,255,255,0.22);
+      filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.9));
+    }
+ 
+    .center-poly-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: center;
+      pointer-events: none;
+      white-space: nowrap;
+      line-height: 1.4;
+      text-shadow: 0 0 10px rgba(255,255,255,0.6);
+    }
+ 
+    .menu-line {
+      stroke: rgba(255, 255, 255, 0.85);
+      stroke-width: 2;
+    }
+ 
+    /* ===== JOURNEY EXPANDED PANEL ===== */
+    .journey-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.85);
+      z-index: 500;
+      background: rgba(4, 5, 18, 0.92);
+      backdrop-filter: blur(24px);
+      border: 1.5px solid rgba(140, 160, 255, 0.5);
+      border-radius: 24px;
+      padding: 48px 60px;
+      text-align: center;
+      color: white;
+      min-width: 380px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.23,1,0.32,1);
+      box-shadow: 0 0 80px rgba(80, 100, 255, 0.25), 0 0 140px rgba(60,80,200,0.1);
+    }
+ 
+    .journey-panel.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+ 
+    .journey-panel h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+      text-shadow: 0 0 20px rgba(140,160,255,0.6);
+    }
+ 
+    .journey-panel p {
+      font-size: 0.85rem;
+      opacity: 0.65;
+      letter-spacing: 0.08em;
+      margin: 0 0 32px;
+    }
+ 
+    .journey-timer-ring {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 24px;
+    }
+ 
+    .journey-timer-ring svg {
+      transform: rotate(-90deg);
+    }
+ 
+    .timer-track {
+      fill: none;
+      stroke: rgba(255,255,255,0.1);
+      stroke-width: 5;
+    }
+ 
+    .timer-arc {
+      fill: none;
+      stroke: rgba(140,170,255,0.9);
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear;
+      filter: drop-shadow(0 0 6px rgba(140,170,255,0.7));
+    }
+ 
+    .timer-count {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+    }
+ 
+    .journey-cancel {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.5);
+      padding: 8px 24px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+ 
+    .journey-cancel:hover {
+      border-color: rgba(255,100,100,0.6);
+      color: rgba(255,120,120,0.8);
+    }
+ 
+    /* ===== GLITCH OVERLAY ===== */
+    .glitch-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0;
+      background: #000;
+    }
+ 
+    .glitch-overlay.active {
+      animation: glitchSequence 2s ease-in-out forwards;
+    }
+ 
+    @keyframes glitchSequence {
+      0%   { opacity: 0; }
+      10%  { opacity: 1; background: #0a0a1a; }
+      12%  { opacity: 0.4; background: #fff; transform: translateX(-6px); }
+      13%  { opacity: 1; background: #0a0a1a; transform: translateX(4px); }
+      15%  { opacity: 0; transform: translateX(0); }
+      30%  { opacity: 0.8; background: #050518; }
+      32%  { opacity: 0.2; background: #6070ff; transform: translateX(-10px) skewX(-3deg); }
+      34%  { opacity: 1; background: #000; transform: translateX(8px) skewX(2deg); }
+      36%  { opacity: 0; transform: translateX(0) skewX(0); }
+      60%  { opacity: 0; }
+      70%  { opacity: 1; background: #000; }
+      72%  { opacity: 0.5; background: #fff; transform: scaleX(1.03); }
+      74%  { opacity: 1; background: #000; transform: scaleX(1); }
+      80%  { opacity: 1; background: #000; }
+      100% { opacity: 1; background: #000; }
+    }
+ 
+    .glitch-overlay::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.3) 2px,
+        rgba(0, 0, 0, 0.3) 4px
+      );
+    }
+ 
+    @keyframes nodeFadeIn {
+      0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+      100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+ 
+    @keyframes polyPop {
+      0%   { opacity: 0; transform: scale(0.3) rotate(-30deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+ 
+    @media (max-width: 640px) {
+      .welcome { font-size: 1.2rem; padding: 8px 28px; top: 4%; }
+      .title .orbit-line, .title .infinity-line { font-size: 1.8rem; }
+      .title .to-line { font-size: 0.9rem; }
+      .initiate-btn { padding: 12px 32px; font-size: 1rem; bottom: 10%; }
+      .status { font-size: 0.65rem; bottom: 3%; letter-spacing: 0.2em; }
+      .menu-node { padding: 8px 18px; font-size: 0.85rem; }
+      .journey-panel { min-width: 280px; padding: 32px 28px; }
+    }
+ 
+    @keyframes softPulse {
+      0%   { text-shadow: 0 0 5px rgba(100,120,255,0.3); }
+      100% { text-shadow: 0 0 20px rgba(140,160,255,0.7); }
+    }
+    .title { animation: softPulse 3s infinite alternate; }
+  </style>
+</head>
+<body>
+ 
+<canvas id="spaceCanvas"></canvas>
+ 
+<!-- Opening UI -->
+<div id="uiContainer" class="ui-layer">
+  <div class="welcome">WELCOME</div>
+  <div class="title">
+    <span class="orbit-line">ORBIT</span>
+    <span class="to-line">TO</span>
+    <span class="infinity-line">INFINITY</span>
+  </div>
+  <button id="launchBtn" class="initiate-btn">INITIATE</button>
+  <div id="statusMsg" class="status">Ready</div>
+</div>
+ 
+<!-- Menu Layer -->
+<div id="menuLayer" class="menu-layer">
+  <svg id="menuSvg" class="menu-svg"></svg>
+  <div id="menuNodes" class="menu-nodes"></div>
+</div>
+ 
+<!-- Journey Through Time expanded panel -->
+<div id="journeyPanel" class="journey-panel">
+  <h2>Journey Through Time</h2>
+  <p>Initiating temporal sequence…</p>
+  <div class="journey-timer-ring">
+    <svg width="100" height="100" viewBox="0 0 100 100">
+      <circle class="timer-track" cx="50" cy="50" r="45"/>
+      <circle id="timerArc" class="timer-arc" cx="50" cy="50" r="45"/>
+    </svg>
+    <div class="timer-count" id="timerCount">5</div>
+  </div>
+  <button class="journey-cancel" id="journeyCancel">CANCEL</button>
+</div>
+ 
+<!-- Glitch overlay -->
+<div class="glitch-overlay" id="glitchOverlay"></div>
+ 
+<script>
+(function() {
+  const canvas = document.getElementById('spaceCanvas');
+  const ctx = canvas.getContext('2d');
+  const uiContainer = document.getElementById('uiContainer');
+  const launchButton = document.getElementById('launchBtn');
+  const statusSpan = document.getElementById('statusMsg');
+ 
+  let width = 0, height = 0, centerX = 0, centerY = 0;
+  const stars = [];
+  const STAR_COUNT = 1250;
+  const MAX_DEPTH = 2400;
+  let currentSpeed = 0.22;
+  let targetSpeed = 0.22;
+  let flightPhase = 'idle';
+  let phaseTimer = 0;
+  let bloomIntensity = 0;
+  let hasInitiated = false;
+  let prevFrameTime = 0;
+  let extraParticles = [];
+  let menuVisible = false;
+ 
+  function resizeCanvas() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    centerX = width / 2;
+    centerY = height / 2;
+  }
+ 
+  function createStar() {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.pow(Math.random(), 0.7) * Math.max(width, height) * 0.92;
+    return {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
+      z: 180 + Math.random() * (MAX_DEPTH - 180),
+      pz: MAX_DEPTH,
+      twinkleOffset: Math.random() * Math.PI * 2,
+      hue: Math.random() < 0.18 ? 250 + Math.random() * 45 : 195 + Math.random() * 50,
+      sat: 68 + Math.random() * 28,
+    };
+  }
+ 
+  function initStarfield() {
+    stars.length = 0;
+    for (let i = 0; i < STAR_COUNT; i++) stars.push(createStar());
+  }
+ 
+  function recycleStar(star) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.pow(Math.random(), 0.65) * Math.max(width, height) * 0.96;
+    star.x = Math.cos(angle) * radius;
+    star.y = Math.sin(angle) * radius;
+    star.z = MAX_DEPTH;
+    star.pz = MAX_DEPTH;
+    star.twinkleOffset = Math.random() * Math.PI * 2;
+    star.hue = Math.random() < 0.18 ? 250 + Math.random() * 45 : 195 + Math.random() * 50;
+    star.sat = 70 + Math.random() * 24;
+  }
+ 
+  function projectPoint(x, y, z) {
+    const focal = 650;
+    const scale = focal / z;
+    return { x: centerX + x * scale, y: centerY + y * scale };
+  }
+ 
+  // ====== NODE DATA (Upcoming Missions removed) ======
+  const nodeData = [
+    { label: 'Journey Through Time', angle: -90 },
+    { label: 'Orbital Technologies',  angle: -25 },
+    { label: 'Exploration',            angle:  25 },
+    { label: 'Deep Space',             angle:  65 },
+    { label: 'Beyond Infinity',        angle: 115 },
+    { label: 'About',                  angle: 180 }   // Adjusted angle for better spacing
+  ];
+ 
+  // ====== BUILD MENU ======
+  function buildMenu(animate) {
+    const svg = document.getElementById('menuSvg');
+    const container = document.getElementById('menuNodes');
+    svg.innerHTML = '';
+    container.innerHTML = '';
+ 
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const isMobile = window.innerWidth < 640;
+    const radius = isMobile
+      ? Math.min(window.innerWidth, window.innerHeight) * 0.4
+      : Math.min(window.innerWidth, window.innerHeight) * 0.35;
+    const polyRadius = isMobile ? 35 : 48;
+ 
+    // Collect polygon vertices
+    const verts = nodeData.map(node => {
+      const rad = node.angle * Math.PI / 180;
+      return { px: cx + Math.cos(rad) * polyRadius, py: cy + Math.sin(rad) * polyRadius };
+    });
+ 
+    // Draw lines
+    nodeData.forEach((node, i) => {
+      const rad = node.angle * Math.PI / 180;
+      const { px, py } = verts[i];
+      const nx = cx + Math.cos(rad) * radius;
+      const ny = cy + Math.sin(rad) * radius;
+ 
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', px); line.setAttribute('y1', py);
+      line.setAttribute('x2', nx); line.setAttribute('y2', ny);
+      line.classList.add('menu-line');
+      const length = Math.hypot(nx - px, ny - py);
+      line.style.strokeDasharray = length;
+      if (animate) {
+        line.style.strokeDashoffset = length;
+        line.style.transition = `stroke-dashoffset 0.8s cubic-bezier(0.2,0.8,0.2,1) ${0.3 + i * 0.1}s`;
+      } else {
+        line.style.strokeDashoffset = '0';
+      }
+      svg.appendChild(line);
+ 
+      // Node pill
+      const div = document.createElement('div');
+      div.classList.add('menu-node');
+      div.textContent = node.label;
+      div.style.left = `${nx}px`;
+      div.style.top  = `${ny}px`;
+      div.addEventListener('click', () => handleNodeClick(node.label));
+      if (animate) {
+        div.style.opacity = '0';
+        div.style.animation = `nodeFadeIn 0.6s cubic-bezier(0.2,0.8,0.2,1) ${0.7 + i * 0.1}s forwards`;
+        setTimeout(() => { if (menuVisible) { div.style.animation = ''; div.style.opacity = '1'; } }, (1.3 + i * 0.1) * 1000 + 100);
+      } else {
+        div.style.opacity = '1';
+      }
+      container.appendChild(div);
+    });
+ 
+    // Polygon shape in SVG
+    const polyPts = verts.map(v => `${v.px},${v.py}`).join(' ');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', polyPts);
+    poly.classList.add('center-poly');
+    if (animate) {
+      poly.style.opacity = '0';
+      poly.style.transformOrigin = `${cx}px ${cy}px`;
+      poly.style.animation = `polyPop 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.1s forwards`;
+      setTimeout(() => { if (menuVisible) { poly.style.animation = ''; poly.style.opacity = '1'; } }, 1000);
+    } else {
+      poly.style.opacity = '1';
+      poly.style.transformOrigin = `${cx}px ${cy}px`;
+    }
+    svg.insertBefore(poly, svg.firstChild);
+ 
+    // Pentagon clickable button
+    const polySize = polyRadius * 2 + 12;
+    const btn = document.createElement('button');
+    btn.className = 'center-poly-btn';
+    btn.style.left = `${cx}px`;
+    btn.style.top  = `${cy}px`;
+    btn.style.width  = `${polySize}px`;
+    btn.style.height = `${polySize}px`;
+ 
+    btn.innerHTML = `
+      <svg width="${polySize}" height="${polySize}" viewBox="-${polySize/2} -${polySize/2} ${polySize} ${polySize}" style="overflow:visible;position:absolute;top:0;left:0;pointer-events:none;">
+        <polygon points="${verts.map(v => `${v.px - cx},${v.py - cy}`).join(' ')}"
+          fill="rgba(255,255,255,0.06)"
+          stroke="rgba(255,255,255,0.9)"
+          stroke-width="2.5"
+          style="filter:drop-shadow(0 0 10px rgba(255,255,255,0.5));transition:all 0.3s ease;"
+        />
+      </svg>
+      <span class="center-poly-label">CLICK<br>TO START</span>
+    `;
+    btn.addEventListener('click', handleCenterClick);
+    container.appendChild(btn);
+ 
+    if (animate) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.querySelectorAll('.menu-line').forEach(l => { l.style.strokeDashoffset = '0'; });
+        });
+      });
+    }
+  }
+ 
+  function showNodeMenu() {
+    if (menuVisible) return;
+    menuVisible = true;
+    const layer = document.getElementById('menuLayer');
+    layer.classList.add('active');
+    buildMenu(true);
+  }
+ 
+  function handleCenterClick() {
+    const layer = document.getElementById('menuLayer');
+    layer.style.transition = 'opacity 0.7s ease';
+    layer.style.opacity = '0';
+    setTimeout(() => { layer.style.pointerEvents = 'none'; }, 700);
+ 
+    setTimeout(() => {
+      startJourneyTimer();
+    }, 500);
+  }
+ 
+  function handleNodeClick(label) {
+    if (label === 'Journey Through Time') {
+      handleCenterClick();
+    }
+  }
+ 
+  // ====== JOURNEY TIMER ======
+  let journeyTimerInterval = null;
+  let journeyCancelled = false;
+ 
+  function startJourneyTimer() {
+    const panel = document.getElementById('journeyPanel');
+    const arc   = document.getElementById('timerArc');
+    const count = document.getElementById('timerCount');
+    const cancel = document.getElementById('journeyCancel');
+    const circumference = 283;
+    journeyCancelled = false;
+ 
+    panel.classList.add('visible');
+ 
+    let secondsLeft = 5;
+    arc.style.strokeDashoffset = '0';
+    count.textContent = secondsLeft;
+ 
+    requestAnimationFrame(() => {
+      arc.style.transition = 'stroke-dashoffset 5s linear';
+      arc.style.strokeDashoffset = circumference;
+    });
+ 
+    journeyTimerInterval = setInterval(() => {
+      if (journeyCancelled) return;
+      secondsLeft--;
+      count.textContent = secondsLeft;
+      if (secondsLeft <= 0) {
+        clearInterval(journeyTimerInterval);
+        triggerGlitchAndRedirect();
+      }
+    }, 1000);
+ 
+    cancel.addEventListener('click', () => {
+      journeyCancelled = true;
+      clearInterval(journeyTimerInterval);
+      panel.classList.remove('visible');
+      setTimeout(() => {
+        const layer = document.getElementById('menuLayer');
+        layer.style.opacity = '1';
+        layer.style.pointerEvents = 'auto';
+      }, 400);
+    }, { once: true });
+  }
+ 
+  function triggerGlitchAndRedirect() {
+    const panel = document.getElementById('journeyPanel');
+    panel.style.opacity = '0';
+ 
+    const glitch = document.getElementById('glitchOverlay');
+    glitch.classList.add('active');
+ 
+    let flickers = 0;
+    const flickerInterval = setInterval(() => {
+      if (flickers > 14) { clearInterval(flickerInterval); return; }
+      ctx.fillStyle = `rgba(${Math.random() > 0.5 ? 80 : 0}, ${Math.random() > 0.7 ? 60 : 0}, ${Math.floor(Math.random()*255)}, ${Math.random() * 0.3})`;
+      ctx.fillRect(
+        Math.random() * width,
+        Math.random() * height,
+        Math.random() * width * 0.6 + 50,
+        Math.random() * 8 + 2
+      );
+      flickers++;
+    }, 80);
+ 
+    setTimeout(() => {
+      window.location.href = 'journey-through-time.html';
+    }, 2100);
+  }
+ 
+  // ====== FLIGHT PHASES ======
+  function updateFlightPhase(dt) {
+    if (flightPhase === 'idle') return;
+    phaseTimer += dt;
+ 
+    if (flightPhase === 'warp-up') {
+      targetSpeed = 29;
+      bloomIntensity = Math.min(1, bloomIntensity + dt * 1.4);
+      if (phaseTimer > 2.2) { flightPhase = 'warp-max'; phaseTimer = 0; if (statusSpan) statusSpan.textContent = '◉ HYPER TRANSIT ◉'; }
+    } else if (flightPhase === 'warp-max') {
+      targetSpeed = 58;
+      bloomIntensity = Math.min(1, bloomIntensity + dt * 0.65);
+      if (phaseTimer > 1.6) { flightPhase = 'drop-out'; phaseTimer = 0; if (statusSpan) statusSpan.textContent = 'DECELERATING'; }
+    } else if (flightPhase === 'drop-out') {
+      targetSpeed = 0.38;
+      bloomIntensity = Math.max(0, bloomIntensity - dt * 1.15);
+      if (phaseTimer > 2.5) {
+        flightPhase = 'cruise'; phaseTimer = 0;
+        if (statusSpan) statusSpan.textContent = 'DEEP SPACE CRUISE';
+        setTimeout(() => { if (statusSpan && flightPhase === 'cruise') statusSpan.style.opacity = '0.65'; }, 400);
+        showNodeMenu();
+      }
+    } else if (flightPhase === 'cruise') {
+      targetSpeed = 0.27;
+      bloomIntensity = Math.max(0, bloomIntensity - dt * 0.2);
+    }
+  }
+ 
+  function drawBloomBackground(dt) {
+    const darkOpacity = flightPhase === 'cruise' ? 0.5 : 0.3;
+    ctx.fillStyle = `rgba(0,0,0,${darkOpacity})`;
+    ctx.fillRect(0, 0, width, height);
+ 
+    if (bloomIntensity > 0.02) {
+      const r = Math.max(width, height) * 0.7;
+      const g = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, r);
+      g.addColorStop(0, `rgba(130,150,255,${0.18 * bloomIntensity + 0.02})`);
+      g.addColorStop(0.4, `rgba(70,70,180,${0.09 * bloomIntensity})`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
+      if (flightPhase === 'warp-max') {
+        ctx.fillStyle = `rgba(80,100,240,${0.07 * bloomIntensity})`;
+        ctx.fillRect(0, 0, width, height);
+      }
+    }
+  }
+ 
+  function drawStarsMotion(dt) {
+    currentSpeed += (targetSpeed - currentSpeed) * Math.min(1, dt * 2.8);
+    const now = performance.now();
+ 
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      s.pz = s.z;
+      s.z -= currentSpeed * (16 + s.z * 0.00095);
+      if (s.z < 1.2) { recycleStar(s); continue; }
+ 
+      const cur  = projectPoint(s.x, s.y, s.z);
+      const prev = projectPoint(s.x, s.y, Math.max(1.2, s.pz));
+ 
+      if (cur.x < -80 || cur.x > width + 80 || cur.y < -80 || cur.y > height + 80) { recycleStar(s); continue; }
+ 
+      const tw = 0.6 + 0.4 * Math.sin(now * 0.0022 + s.twinkleOffset);
+      const dr = 1 - (s.z / MAX_DEPTH);
+      const br = 65 + dr * 35;
+      const al = Math.min(0.98, (0.25 + dr * 0.85) * tw);
+      const isWarp = flightPhase === 'warp-up' || flightPhase === 'warp-max' || flightPhase === 'drop-out';
+ 
+      if (isWarp) {
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(cur.x, cur.y);
+        ctx.strokeStyle = `hsla(${s.hue},${s.sat}%,${br + 15}%,${Math.min(0.9, al + 0.2)})`;
+        ctx.lineWidth = Math.max(0.7, dr * 3.2);
+        ctx.stroke();
+      } else {
+        const rad = Math.max(0.5, dr * 2.4);
+        ctx.beginPath();
+        ctx.arc(cur.x, cur.y, rad, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${s.hue},${s.sat}%,${br}%,${al})`;
+        ctx.fill();
+        if (dr > 0.6 && rad > 1.2) {
+          ctx.beginPath();
+          ctx.arc(cur.x, cur.y, rad * 0.45, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${s.hue},85%,88%,0.55)`;
+          ctx.fill();
+        }
+      }
+    }
+  }
+ 
+  function spawnWarpParticles() {
+    if ((flightPhase === 'warp-up' || flightPhase === 'warp-max') && bloomIntensity > 0.3) {
+      if (Math.random() < 0.38) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * Math.max(width, height) * 0.5;
+        extraParticles.push({ x: centerX + Math.cos(a) * r, y: centerY + Math.sin(a) * r, life: 0.65 + Math.random() * 0.5, size: 2 + Math.random() * 5, hue: 210 + Math.random() * 70, alpha: 0.8 });
+      }
+    }
+    for (let i = extraParticles.length - 1; i >= 0; i--) {
+      const p = extraParticles[i];
+      p.life -= 0.025;
+      if (p.life <= 0) { extraParticles.splice(i, 1); continue; }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue},85%,65%,${p.alpha * p.life * 0.7})`;
+      ctx.fill();
+    }
+  }
+ 
+  function animationFrame(nowMs) {
+    if (!prevFrameTime) prevFrameTime = nowMs;
+    let dt = Math.min(0.045, (nowMs - prevFrameTime) / 1000);
+    if (dt <= 0) dt = 0.016;
+    prevFrameTime = nowMs;
+ 
+    if (hasInitiated) { updateFlightPhase(dt); }
+    else { targetSpeed = 0.22; currentSpeed += (targetSpeed - currentSpeed) * 0.2; bloomIntensity = Math.max(0, bloomIntensity - dt * 0.5); }
+ 
+    drawBloomBackground(dt);
+    drawStarsMotion(dt);
+    spawnWarpParticles();
+    requestAnimationFrame(animationFrame);
+  }
+ 
+  function initiateAndVanish() {
+    if (hasInitiated) return;
+    hasInitiated = true;
+    flightPhase = 'warp-up';
+    phaseTimer = 0;
+    bloomIntensity = 0;
+    targetSpeed = 0.22;
+    currentSpeed = 0.22;
+ 
+    if (statusSpan) { statusSpan.textContent = '⚡ ENGINE IGNITE ⚡'; statusSpan.style.opacity = '1'; }
+    if (uiContainer) { uiContainer.classList.add('hidden-ui'); launchButton.style.pointerEvents = 'none'; }
+    if (launchButton) { launchButton.disabled = true; launchButton.style.cursor = 'default'; }
+    setTimeout(() => { if (uiContainer && uiContainer.parentNode) uiContainer.style.visibility = 'hidden'; }, 1400);
+  }
+ 
+  function bindEvents() {
+    if (launchButton) launchButton.addEventListener('click', e => { e.preventDefault(); initiateAndVanish(); });
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      stars.forEach(s => { if (Math.abs(s.x) > Math.max(width, height) * 1.5 || Math.abs(s.y) > Math.max(width, height) * 1.5) recycleStar(s); });
+      if (menuVisible) buildMenu(false);
+    });
+  }
+ 
+  resizeCanvas();
+  initStarfield();
+  bindEvents();
+  requestAnimationFrame(animationFrame);
+})();
+</script>
+</body>
+</html>

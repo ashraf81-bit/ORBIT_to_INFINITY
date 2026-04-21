@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep Space | Solar System Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --mono: 'Share Tech Mono', monospace;
+    }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Rajdhani', sans-serif;
+      background: #000;
+      cursor: default;
+    }
+    /* (All your existing beautiful CSS remains unchanged - only added the new section) */
+    #warpOverlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #000; opacity: 0; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #warpOverlay.active { pointer-events: all; }
+    #warpCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .warp-text {
+      position: relative; z-index: 2;
+      font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 900;
+      letter-spacing: 0.4em; text-transform: uppercase;
+      color: rgba(255,255,255,0); text-align: center;
+      transition: color 0.5s ease;
+    }
+    .warp-text.visible { color: rgba(255,255,255,0.9); }
+
+    #sectionsWrap {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+    }
+
+    .planet-section {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.0s;
+    }
+    .planet-section.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .sec-bg {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      filter: blur(22px) brightness(0.38) saturate(1.2);
+      transform: scale(1.08);
+      z-index: 0;
+    }
+
+    .sec-vignette {
+      position: absolute; inset: 0; z-index: 1;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%);
+    }
+
+    #starsBg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+
+    .planet-img-wrap {
+      position: absolute;
+      left: 4%; top: 50%;
+      transform: translateY(-50%);
+      width: 46vw; max-width: 600px;
+      z-index: 5;
+      filter: drop-shadow(0 0 60px var(--glow));
+      animation: floatPlanet 8s ease-in-out infinite;
+    }
+    .planet-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+    @keyframes floatPlanet {
+      0%,100% { transform: translateY(-50%) translateY(0px); }
+      50% { transform: translateY(-50%) translateY(-16px); }
+    }
+
+    .ui-right {
+      position: absolute;
+      right: 3%; top: 50%;
+      transform: translateY(-50%);
+      width: 38vw; max-width: 440px;
+      z-index: 6;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .title-block {
+      position: absolute;
+      left: 4%; top: 5%;
+      z-index: 6;
+      max-width: 44vw;
+    }
+    .planet-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      font-weight: 900; letter-spacing: 0.1em;
+      color: #fff;
+      text-shadow: 0 0 40px var(--glow), 0 0 80px var(--glow);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .planet-subtitle {
+      font-family: var(--mono); font-size: 0.65rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--glow); opacity: 0.8;
+      margin-bottom: 8px;
+    }
+    .cinematic-line {
+      font-family: 'Rajdhani', sans-serif; font-size: 0.85rem;
+      font-style: italic; color: rgba(255,255,255,0.55);
+      line-height: 1.5; max-width: 360px;
+    }
+
+    .core-data-panel {
+      background: rgba(0,0,0,0.72);
+      border: 1px solid var(--glow);
+      border-radius: 6px;
+      padding: 14px 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .panel-header {
+      font-family: var(--mono); font-size: 0.62rem;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--glow); margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 8px;
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px; padding: 8px 10px;
+    }
+    .stat-label {
+      font-family: var(--mono); font-size: 0.52rem;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35); display: block; margin-bottom: 3px;
+    }
+    .stat-value {
+      font-family: var(--mono); font-size: 0.85rem;
+      color: var(--glow); font-weight: bold;
+    }
+    .stat-box.wide { grid-column: span 2; }
+
+    .detail-panel {
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px; padding: 14px 16px;
+    }
+    .detail-entry {
+      font-family: 'Rajdhani', sans-serif; font-size: 0.92rem;
+      color: var(--glow); margin-bottom: 4px; line-height: 1.5;
+    }
+    .detail-entry span {
+      color: rgba(255,255,255,0.6);
+    }
+
+    .sig-box {
+      position: absolute;
+      left: 4%; bottom: 6%;
+      width: 44vw; max-width: 540px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid var(--glow);
+      border-radius: 6px; padding: 16px 20px;
+      z-index: 6;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+    .sig-label {
+      font-family: var(--mono); font-size: 0.55rem;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--glow); margin-bottom: 8px; opacity: 0.7;
+    }
+    .sig-text {
+      font-family: 'Rajdhani', sans-serif; font-size: 1rem;
+      color: rgba(255,255,255,0.75); line-height: 1.6; font-style: italic;
+    }
+
+    .nav-arrow {
+      position: fixed; z-index: 100;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7); border-radius: 50%;
+      width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.4rem;
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+    .nav-arrow:hover {
+      background: rgba(255,255,255,0.12); color: #fff;
+      border-color: rgba(255,255,255,0.4);
+    }
+    #navPrev { left: 50%; top: 50%; transform: translate(-140px, -50%); }
+    #navNext { left: 50%; top: 50%; transform: translate(92px, -50%); }
+
+    .dots-nav {
+      position: fixed; bottom: 22px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 100; display: flex; gap: 8px; align-items: center;
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      cursor: pointer; transition: all 0.3s ease;
+    }
+    .dot.active {
+      background: #fff; transform: scale(1.5);
+      box-shadow: 0 0 8px rgba(255,255,255,0.8);
+    }
+
+    .section-counter {
+      position: fixed; bottom: 46px; right: 32px;
+      z-index: 100;
+      font-family: var(--mono); font-size: 0.65rem;
+      color: rgba(255,255,255,0.3); letter-spacing: 0.15em;
+    }
+
+    .section-name-top {
+      position: fixed; top: 22px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      font-family: var(--mono); font-size: 0.58rem;
+      letter-spacing: 0.3em; text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .back-btn {
+      position: fixed; top: 16px; left: 20px; z-index: 200;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);
+      padding: 8px 18px; border-radius: 9999px;
+      font-family: 'Orbitron', sans-serif; font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 8px;
+      transition: all 0.3s ease;
+    }
+    .back-btn:hover {
+      background: rgba(255,255,255,0.1); color: #fff;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    #transOverlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: #000; opacity: 0; pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+    #transOverlay.fade { opacity: 1; }
+
+    #warpBtn {
+      position: fixed; bottom: 44px; right: 90px;
+      z-index: 100;
+      padding: 14px 36px;
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.8);
+      border-radius: 2px;
+      font-family: 'Orbitron', sans-serif; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      cursor: pointer; transition: all 0.4s ease;
+      box-shadow: 0 0 20px rgba(255,255,255,0.05);
+      display: none;
+    }
+    #warpBtn:hover {
+      background: rgba(255,255,255,0.08); border-color: #fff;
+      box-shadow: 0 0 40px rgba(255,255,255,0.2); color: #fff;
+      transform: translateY(-2px);
+    }
+    #warpBtn.show { display: flex; align-items: center; gap: 10px; }
+
+    @media (max-width: 768px) {
+      .planet-img-wrap { width: 80vw; left: 50%; top: 28%; transform: translate(-50%,-50%); }
+      .ui-right { width: 90vw; right: 5%; top: auto; bottom: 2%; transform: none; }
+      .title-block { left: 5%; top: 2%; max-width: 90vw; }
+      .sig-box { width: 90vw; left: 5%; bottom: 2%; }
+    }
+  </style>
+</head>
+<body>
+<canvas id="starsBg"></canvas>
+<div id="transOverlay"></div>
+
+<!-- WARP OVERLAY -->
+<div id="warpOverlay">
+  <canvas id="warpCanvas"></canvas>
+  <div class="warp-text" id="warpText">ENTERING INFINITY</div>
+</div>
+
+<!-- BACK -->
+<a href="index.html" class="back-btn">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  BACK
+</a>
+
+<div class="section-name-top" id="sectionNameTop">SOLAR SYSTEM EXPLORER</div>
+<div class="section-counter" id="sectionCounter">01 / 16</div>
+
+<!-- NAV ARROWS -->
+<div class="nav-arrow" id="navPrev">‹</div>
+<div class="nav-arrow" id="navNext">›</div>
+
+<!-- DOTS -->
+<div class="dots-nav" id="dotsNav"></div>
+
+<!-- WARP BUTTON -->
+<button id="warpBtn" class="show">TO INFINITY <span>→</span></button>
+
+<!-- SECTIONS WRAPPER -->
+<div id="sectionsWrap"></div>
+
+<script>
+/* ====================== DATA ====================== */
+const SECTIONS = [
+  // ... (all your previous sections remain the same) ...
+  {
+    id: 'sun',
+    name: 'THE SUN',
+    subtitle: 'The Origin Engine',
+    glow: '#f59e0b',
+    image: 'img_sun.png',
+    stats: [
+      { label: 'Surface Temp', value: '5,500°C' },
+      { label: 'Core Temp', value: '15 Million °C' },
+      { label: 'Diameter', value: '1.39 Million km' },
+      { label: 'Heliosphere', value: '~120 AU' },
+    ],
+    details: [
+      { key: 'Type', val: 'G-type main-sequence star' },
+      { key: 'Age', val: '4.6 Billion years' },
+      { key: 'Radiation Output', val: '3.8 × 10²⁶ watts' },
+      { key: 'Missions', val: 'Parker Solar Probe · SDO · SOHO' },
+    ],
+    sig: '"The Sun is not a star in space — it is the system that defines space itself."'
+  },
+  {
+    id: 'mercury',
+    name: 'MERCURY',
+    subtitle: 'The Silent Furnace',
+    glow: '#9ca3af',
+    image: 'img_mercury.png',
+    stats: [
+      { label: 'Distance from Sun', value: '57.9M km' },
+      { label: 'Day Length', value: '59 Earth days' },
+      { label: 'Max Temp', value: '+430°C' },
+      { label: 'Min Temp', value: '−180°C' },
+    ],
+    details: [
+      { key: 'Year Length', val: '88 Earth days' },
+      { key: 'Moons', val: 'None' },
+      { key: 'Atmosphere', val: 'Virtually none' },
+      { key: 'Missions', val: 'MESSENGER · BepiColombo' },
+    ],
+    sig: '"A world of extremes where time itself moves strangely slow."'
+  },
+  {
+    id: 'venus',
+    name: 'VENUS',
+    subtitle: 'The Broken Twin',
+    glow: '#fde047',
+    image: 'img_venus.png',
+    stats: [
+      { label: 'Surface Temp', value: '465°C' },
+      { label: 'Surface Pressure', value: '92× Earth' },
+      { label: 'CO₂ Atmosphere', value: '96.5%' },
+      { label: 'Day Length', value: '243 Earth days' },
+    ],
+    details: [
+      { key: 'Rotation', val: 'Retrograde (spins backwards)' },
+      { key: 'Moons', val: 'None' },
+      { key: 'Cloud Cover', val: 'Permanent sulfuric acid clouds' },
+      { key: 'Missions', val: 'Magellan · Akatsuki · EnVision (2031)' },
+    ],
+    sig: '"Earth\'s twin that chose the path of irreversible transformation."'
+  },
+  {
+    id: 'earth',
+    name: 'EARTH',
+    subtitle: 'The Living System',
+    glow: '#3b82f6',
+    image: 'img_earth.png',
+    stats: [
+      { label: 'Diameter', value: '12,742 km' },
+      { label: 'Gravity', value: '9.8 m/s²' },
+      { label: 'Distance from Sun', value: '149.6M km' },
+      { label: 'Satellite Count', value: '9,000+' },
+    ],
+    details: [
+      { key: 'Environment', val: 'Liquid water · Active weather · Biosphere' },
+      { key: 'Atmosphere', val: 'Nitrogen 78% · Oxygen 21%' },
+      { key: 'Natural Satellite', val: '1 Moon' },
+      { key: 'Missions', val: 'ISS · Hubble · JWST (L2)' },
+    ],
+    sig: '"Not just home — but the only known system that observes itself."'
+  },
+  {
+    id: 'moon',
+    name: 'THE MOON',
+    subtitle: 'The First Mirror',
+    glow: '#d1d5db',
+    image: 'img_moon.png',
+    stats: [
+      { label: 'Gravity', value: '1.62 m/s² (1/6 Earth)' },
+      { label: 'Distance', value: '384,400 km' },
+      { label: 'Surface Age', value: '4.5 Billion years' },
+      { label: 'Diameter', value: '3,474 km' },
+    ],
+    details: [
+      { key: 'Atmosphere', val: 'Essentially none (exosphere)' },
+      { key: 'Temp Range', val: '−173°C to +127°C' },
+      { key: 'Tidal Locking', val: 'Same face always faces Earth' },
+      { key: 'Missions', val: 'Apollo 1–17 · Chandrayaan-3 · Artemis' },
+    ],
+    sig: '"The first step beyond Earth… and still the most emotionally significant."'
+  },
+  {
+    id: 'mars',
+    name: 'MARS',
+    subtitle: 'The Second Frontier',
+    glow: '#ef4444',
+    image: 'img_mars.png',
+    stats: [
+      { label: 'Olympus Mons', value: '21.9 km high' },
+      { label: 'Atmosphere', value: '1% of Earth\'s' },
+      { label: 'Temp Range', value: '−143°C to +35°C' },
+      { label: 'Day Length', value: '24h 37m' },
+    ],
+    details: [
+      { key: 'Moons', val: 'Phobos · Deimos' },
+      { key: 'Atmosphere', val: '95% CO₂' },
+      { key: 'Distance from Sun', val: '227.9M km' },
+      { key: 'Missions', val: 'Curiosity · Perseverance · Ingenuity' },
+    ],
+    sig: '"A dead world that behaves like it is waiting."'
+  },
+  {
+    id: 'jupiter',
+    name: 'JUPITER',
+    subtitle: 'The Guardian Giant',
+    glow: '#f97316',
+    image: 'img_jupiter.png',
+    stats: [
+      { label: 'Mass vs All Planets', value: '2.5× combined' },
+      { label: 'Magnetic Field', value: '20,000× Earth\'s' },
+      { label: 'Great Red Spot', value: '1.3× Earth size' },
+      { label: 'Moons', value: '95 known' },
+    ],
+    details: [
+      { key: 'Composition', val: 'Hydrogen 90% · Helium 10%' },
+      { key: 'Storm Age', val: 'Great Red Spot: 350+ years' },
+      { key: 'Distance from Sun', val: '778.5M km' },
+      { key: 'Missions', val: 'Juno · Galileo · Europa Clipper' },
+    ],
+    sig: '"A failed star that protects the inner worlds."'
+  },
+  {
+    id: 'saturn',
+    name: 'SATURN',
+    subtitle: 'The Ring Architect',
+    glow: '#eab308',
+    image: 'img_saturn.png',
+    stats: [
+      { label: 'Ring Width', value: '282,000 km' },
+      { label: 'Ring Thickness', value: '~10–100 m' },
+      { label: 'Density', value: '0.687 g/cm³ (floats in water)' },
+      { label: 'Moons', value: '146 known' },
+    ],
+    details: [
+      { key: 'Ring Composition', val: '93% water ice · rock debris' },
+      { key: 'Notable Moon', val: 'Titan — has lakes of liquid methane' },
+      { key: 'Distance from Sun', val: '1.43 Billion km' },
+      { key: 'Missions', val: 'Cassini–Huygens (1997–2017)' },
+    ],
+    sig: '"The most elegant structure in the solar system."'
+  },
+  {
+    id: 'uranus',
+    name: 'URANUS',
+    subtitle: 'The Tilted Mystery',
+    glow: '#67e8f9',
+    image: 'img_uranus.png',
+    stats: [
+      { label: 'Axial Tilt', value: '97.77°' },
+      { label: 'Min Temp', value: '−224°C' },
+      { label: 'Methane Atmosphere', value: '~2.3%' },
+      { label: 'Moons', value: '27 known' },
+    ],
+    details: [
+      { key: 'Rotation', val: 'Rolls on its side — unique in solar system' },
+      { key: 'Rings', val: '13 faint rings' },
+      { key: 'Distance from Sun', val: '2.87 Billion km' },
+      { key: 'Missions', val: 'Voyager 2 (1986 flyby)' },
+    ],
+    sig: '"A planet that rolls instead of spins."'
+  },
+  {
+    id: 'neptune',
+    name: 'NEPTUNE',
+    subtitle: 'The Storm World',
+    glow: '#3b82f6',
+    image: 'img_neptune.png',
+    stats: [
+      { label: 'Wind Speed', value: '2,100 km/h' },
+      { label: 'Distance from Sun', value: '4.5 Billion km' },
+      { label: 'Temp', value: '−214°C' },
+      { label: 'Year Length', value: '165 Earth years' },
+    ],
+    details: [
+      { key: 'Great Dark Spot', val: 'Storm the size of Earth (now gone)' },
+      { key: 'Notable Moon', val: 'Triton — orbits backwards' },
+      { key: 'Atmosphere', val: 'Hydrogen · Helium · Methane' },
+      { key: 'Missions', val: 'Voyager 2 (1989 flyby)' },
+    ],
+    sig: '"The edge of sunlight, ruled by supersonic winds."'
+  },
+  {
+    id: 'europa',
+    name: 'EUROPA',
+    subtitle: 'The Hidden Ocean',
+    glow: '#bfdbfe',
+    image: 'img_europa.png',
+    stats: [
+      { label: 'Ocean Depth', value: '~100 km (estimated)' },
+      { label: 'Ice Shell', value: '10–30 km thick' },
+      { label: 'Diameter', value: '3,121 km' },
+      { label: 'Orbit', value: 'Jupiter\'s moon' },
+    ],
+    details: [
+      { key: 'Significance', val: 'Best candidate for extraterrestrial life' },
+      { key: 'Surface', val: 'Cracked ice with reddish ridges' },
+      { key: 'Geysers', val: 'Water vapor plumes observed' },
+      { key: 'Missions', val: 'Europa Clipper (2024) · JUICE' },
+    ],
+    sig: '"Beneath its frozen shell may lie the conditions for life."'
+  },
+  {
+    id: 'titan',
+    name: 'TITAN',
+    subtitle: 'The Methane World',
+    glow: '#fb923c',
+    image: 'img_titan.png',
+    stats: [
+      { label: 'Atmosphere', value: '1.5× Earth pressure' },
+      { label: 'Lakes', value: 'Liquid methane & ethane' },
+      { label: 'Diameter', value: '5,149 km' },
+      { label: 'Orbit', value: 'Saturn\'s largest moon' },
+    ],
+    details: [
+      { key: 'Unique Trait', val: 'Only moon with a dense atmosphere' },
+      { key: 'Weather', val: 'Methane rain, rivers, and lakes' },
+      { key: 'Temperature', val: '−179°C' },
+      { key: 'Missions', val: 'Cassini · Huygens probe · Dragonfly (2028)' },
+    ],
+    sig: '"A world that mimics Earth — with entirely different chemistry."'
+  },
+  {
+    id: 'pluto',
+    name: 'PLUTO',
+    subtitle: 'The Forgotten World',
+    glow: '#a78bfa',
+    image: 'img_pluto.png',
+    stats: [
+      { label: 'Orbit Time', value: '248 Earth years' },
+      { label: 'Distance from Sun', value: '5.9 Billion km avg' },
+      { label: 'Diameter', value: '2,376 km' },
+      { label: 'Largest Moon', value: 'Charon (half Pluto\'s size)' },
+    ],
+    details: [
+      { key: 'Classification', val: 'Dwarf planet (Kuiper Belt)' },
+      { key: 'Surface', val: 'Nitrogen ice plains · methane peaks' },
+      { key: 'Heart Region', val: 'Tombaugh Regio — nitrogen glacier' },
+      { key: 'Missions', val: 'New Horizons (2015 flyby)' },
+    ],
+    sig: '"Small worlds with stories larger than their classification."'
+  },
+  {
+    id: 'ceres',
+    name: 'CERES',
+    subtitle: 'The Asteroid Giant',
+    glow: '#d4a574',
+    image: 'img_ceres.png',
+    stats: [
+      { label: 'Location', value: 'Main Asteroid Belt' },
+      { label: 'Diameter', value: '945 km' },
+      { label: 'Orbit Time', value: '4.6 Earth years' },
+      { label: '% of Belt Mass', value: '~33%' },
+    ],
+    details: [
+      { key: 'Classification', val: 'Dwarf planet (largest in asteroid belt)' },
+      { key: 'Bright Spots', val: 'Highly reflective salt deposits' },
+      { key: 'Water Ice', val: 'Confirmed beneath surface' },
+      { key: 'Missions', val: 'Dawn spacecraft (2015–2018)' },
+    ],
+    sig: '"The largest remnant of a planet that never formed."'
+  },
+  
+];
+
+
+(function(){
+  const c = document.getElementById('starsBg');
+  const ctx = c.getContext('2d');
+  let stars = [];
+  function resize(){
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    stars = [];
+    const n = Math.floor(c.width * c.height / 3500);
+    for(let i = 0; i < n; i++){
+      stars.push({
+        x: Math.random()*c.width, y: Math.random()*c.height,
+        r: Math.random()*1.3+0.2,
+        o: Math.random()*0.6+0.15,
+        t: Math.random()*Math.PI*2, s: Math.random()*4+3
+      });
+    }
+  }
+  function draw(ts){
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(s=>{
+      const o = s.o*(0.55+0.45*Math.sin(ts*0.0006/s.s+s.t));
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${o})`; ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize(); window.addEventListener('resize',resize); requestAnimationFrame(draw);
+})();
+
+
+const wrap = document.getElementById('sectionsWrap');
+SECTIONS.forEach((sec, idx) => {
+  const el = document.createElement('div');
+  el.className = 'planet-section';
+  el.id = 'sec-' + sec.id;
+  el.style.setProperty('--glow', sec.glow);
+
+  const statsHTML = sec.stats.map(s =>
+    `<div class="stat-box"><span class="stat-label">${s.label}</span><span class="stat-value">${s.value}</span></div>`
+  ).join('');
+
+  const detailsHTML = sec.details.map(d =>
+    `<div class="detail-entry">${d.key}: <span>${d.val}</span></div>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="sec-bg" style="background-image:url('${sec.image}')"></div>
+    <div class="sec-vignette"></div>
+    <div class="title-block">
+      <div class="planet-subtitle">${sec.subtitle}</div>
+      <div class="planet-title">${sec.name}</div>
+      <div class="cinematic-line">${sec.sig.replace(/"/g,'')}</div>
+    </div>
+    <div class="planet-img-wrap">
+      <img src="${sec.image}" alt="${sec.name}">
+    </div>
+    <div class="ui-right">
+      <div class="core-data-panel">
+        <div class="panel-header">CORE DATA</div>
+        <div class="stats-grid">${statsHTML}</div>
+      </div>
+      <div class="detail-panel">${detailsHTML}</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-label">SIGNIFICANCE</div>
+      <div class="sig-text">${sec.sig}</div>
+    </div>
+  `;
+  wrap.appendChild(el);
+});
+
+
+let current = 0;
+const total = SECTIONS.length;
+let isTransitioning = false;
+const overlay = document.getElementById('transOverlay');
+const counter = document.getElementById('sectionCounter');
+const topLabel = document.getElementById('sectionNameTop');
+const warpBtn = document.getElementById('warpBtn');
+
+const dotsNav = document.getElementById('dotsNav');
+SECTIONS.forEach((_, i) => {
+  const d = document.createElement('div'); d.className = 'dot';
+  d.addEventListener('click', () => goTo(i));
+  dotsNav.appendChild(d);
+});
+
+function goTo(idx) {
+  if(isTransitioning || idx === current) return;
+  if(idx < 0 || idx >= total) return;
+  isTransitioning = true;
+  overlay.classList.add('fade');
+  setTimeout(() => {
+    document.querySelector('.planet-section.active')?.classList.remove('active');
+    current = idx;
+    showSection();
+    overlay.classList.remove('fade');
+    setTimeout(() => { isTransitioning = false; }, 380);
+  }, 360);
+}
+
+function showSection() {
+  const sec = SECTIONS[current];
+  const el = document.getElementById('sec-' + sec.id);
+  el.classList.add('active');
+
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i===current));
+
+  counter.textContent = String(current+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  topLabel.textContent = sec.name + ' · ' + sec.subtitle;
+
+  warpBtn.style.display = current === total - 1 ? 'flex' : 'none';
+
+  document.getElementById('navPrev').style.opacity = current === 0 ? '0.2' : '1';
+  document.getElementById('navNext').style.opacity = current === total-1 ? '0.2' : '1';
+}
+
+/* Init */
+document.getElementById('sec-' + SECTIONS[0].id).classList.add('active');
+showSection();
+
+/* Controls */
+document.getElementById('navPrev').addEventListener('click', () => goTo(current-1));
+document.getElementById('navNext').addEventListener('click', () => goTo(current+1));
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight' || e.key === 'ArrowDown') goTo(current+1);
+  if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') goTo(current-1);
+});
+
+let wheelCooldown = false;
+window.addEventListener('wheel', e => {
+  if(wheelCooldown) return;
+  wheelCooldown = true;
+  setTimeout(() => { wheelCooldown = false; }, 900);
+  if(e.deltaY > 0) goTo(current+1);
+  else goTo(current-1);
+}, { passive: true });
+
+let touchStartX = 0, touchStartY = 0;
+window.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+window.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if(Math.abs(dx) > Math.abs(dy)){
+    if(dx < -40) goTo(current+1);
+    if(dx > 40) goTo(current-1);
+  } else {
+    if(dy < -40) goTo(current+1);
+    if(dy > 40) goTo(current-1);
+  }
+}, { passive: true });
+
+/* ====================== WARP ANIMATION ====================== */
+(function(){
+  const warpOverlay = document.getElementById('warpOverlay');
+  const warpCanvas = document.getElementById('warpCanvas');
+  const warpText = document.getElementById('warpText');
+  const ctx = warpCanvas.getContext('2d');
+  let W, H, stars = [], animFrame, startTime, running = false;
+
+  function resize(){
+    W = warpCanvas.width = window.innerWidth;
+    H = warpCanvas.height = window.innerHeight;
+  }
+
+  function buildWarpStars(){
+    stars = [];
+    for(let i = 0; i < 500; i++){
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * Math.min(W,H) * 0.5;
+      stars.push({
+        x: W/2 + Math.cos(angle)*dist,
+        y: H/2 + Math.sin(angle)*dist,
+        ox: W/2 + Math.cos(angle)*dist,
+        oy: H/2 + Math.sin(angle)*dist,
+        angle, speed: Math.random()*3+1,
+        size: Math.random()*1.5+0.4,
+        brightness: Math.random()
+      });
+    }
+  }
+
+  function drawWarp(t){
+    if(!running) return;
+    const elapsed = (t - startTime) / 1000;
+    const progress = Math.min(elapsed / 3.5, 1);
+    ctx.fillStyle = `rgba(0,0,0,${progress < 0.1 ? progress*5 : 0.18})`;
+    ctx.fillRect(0,0,W,H);
+    const speed = Math.pow(progress, 2) * 80;
+    stars.forEach(s => {
+      const dx = s.ox - W/2;
+      const dy = s.oy - H/2;
+      const len = Math.sqrt(dx*dx+dy*dy);
+      const nx = dx/len; const ny = dy/len;
+      s.x += nx * speed * 0.016 * 60;
+      s.y += ny * speed * 0.016 * 60;
+      const trailLen = speed * 0.4;
+      const alpha = Math.min(1, progress * 3) * (0.4 + s.brightness * 0.6);
+      ctx.beginPath();
+      ctx.moveTo(s.x - nx*trailLen, s.y - ny*trailLen);
+      ctx.lineTo(s.x, s.y);
+      ctx.strokeStyle = `rgba(180,220,255,${alpha})`;
+      ctx.lineWidth = s.size;
+      ctx.stroke();
+      if(s.x < 0 || s.x > W || s.y < 0 || s.y > H){
+        s.x = s.ox; s.y = s.oy;
+      }
+    });
+    if(progress > 0.85){
+      const flashAlpha = (progress - 0.85) / 0.15;
+      ctx.fillStyle = `rgba(255,255,255,${flashAlpha * 0.9})`;
+      ctx.fillRect(0,0,W,H);
+    }
+    if(elapsed < 3.5){
+      animFrame = requestAnimationFrame(drawWarp);
+    } else {
+      window.location.href = 'To_infinity.html';
+    }
+  }
+
+  document.getElementById('warpBtn').addEventListener('click', () => {
+    running = true;
+    resize(); buildWarpStars();
+    warpOverlay.style.opacity = '1';
+    warpOverlay.classList.add('active');
+    ctx.clearRect(0,0,W,H);
+    setTimeout(() => { warpText.classList.add('visible'); }, 900);
+    setTimeout(() => { warpText.classList.remove('visible'); }, 2500);
+    startTime = performance.now();
+    animFrame = requestAnimationFrame(drawWarp);
+  });
+
+  window.addEventListener('resize', () => { if(running) resize(); });
+})();
+</script>
+</body>
+</html>
